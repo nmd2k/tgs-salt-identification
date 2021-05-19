@@ -1,30 +1,34 @@
+from model.config import *
 from numpy import deprecate_with_doc
 import torch
 import os
 import pandas as pd
 from skimage import io
-from torch.utils.data import Dataset, dataset, DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
-from torchvision import datasets
+from torch.utils.data import Dataset, DataLoader, dataloader, random_split
+from torchvision import transforms
 import matplotlib.pyplot as plt
 
 class TGSDataset(Dataset):
     """TGS Salt Identification dataset."""
     
-    def __init__(self, root_dir):
+    def __init__(self, root_dir=DATA_PATH, transform=None):
         """
         Args:
             root_path (string): Directory with all the images.
+            transformer (function): whether to apply the data augmentation scheme
+                mentioned in the paper. Only applied on the train split.
         """
 
         # load dataset from root dir
-        train_df  = pd.read_csv(root_dir+'train.csv', index_col='id', usecols=[0])
+        train_df  = pd.read_csv(root_dir+'train.csv', index_col='id')
         depths_df = pd.read_csv(root_dir+'depths.csv', index_col='id')
         train_df = train_df.join(depths_df)
 
-        self.root_dir = root_dir
-        self.ids      = train_df.index
-        self.depths   = train_df['z'].to_numpy()
+        self.root_dir   = root_dir
+        self.ids        = train_df.index
+        self.depths     = train_df['z'].to_numpy()
+        self.rle        = train_df['rle_mask'].to_numpy()
+        self.transfroms = transform
 
     def __len__(self):
         return len(self.ids)
@@ -33,19 +37,53 @@ class TGSDataset(Dataset):
         id    = self.ids[index]
         depth = self.depths[index]
 
-        image = io.imread(self.root_dir+'train/images/'+id+'.png', as_gray=True)
-        mask = io.imread(self.root_dir+'train/masks/'+id+'.png', as_gray=True)
+        # file should be unzipped
+        image = io.imread(self.root_dir+IMAGE_PATH+id+'.png', as_gray=True)
+        mask  = io.imread(self.root_dir+MASK_PATH+id+'.png', as_gray=True)
 
-        return (image, mask, depth)
+        if self.transfroms:
+            image = self.transfroms(image)
+            mask = self.transfroms(mask)
 
-def get_dataloader(data_path, batch_size, transformer, random_seed, valid_ratio=0.2, shuffle=True,num_workers=4):
+        return (depth, image, mask)
+
+def get_transform(is_train=True):
+    transform = [
+        transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
+    ]
+
+    if is_train:
+        transform += [
+            transforms.RandomApply([transforms.ColorJitter(
+                brightness=0.4,
+                contrast=0.4,
+                saturation=0.4,
+                hue=0.2
+            )],p=0.6),
+            transforms.RandomApply([transforms.RandomAffine(
+                degrees=15,
+                translate=(0.1, 0.1), 
+                scale=(0.9, 1.1), 
+                shear=0.1
+            )],p=0.6),
+        ]
+
+    transform += [
+        transforms.ToTensor(), 
+        transforms.Normalize((0.5,), (0.5,))
+    ]
+
+    return transforms.Compose(transforms)
+
+
+def get_dataloader(dataset, 
+                    batch_size=BATCH_SIZE, random_seed=RANDOM_SEED, 
+                    valid_ratio=VALID_RATIO, shuffle=True, num_workers=NUM_WORKERS):
     """
     Params:
     -------
-    - data_path: path directory to the dataset.
+    - dataset: the dataset.
     - batch_size: how many samples per batch to load.
-    - transformer: whether to apply the data augmentation scheme
-      mentioned in the paper. Only applied on the train split.
     - random_seed: fix seed for reproducibility.
     - valid_ratio: percentage split of the training set used for
       the validation set. Should be a float in the range [0, 1].
@@ -61,24 +99,31 @@ def get_dataloader(data_path, batch_size, transformer, random_seed, valid_ratio=
     error_msg = "[!] valid_ratio should be in the range [0, 1]."
     assert ((valid_ratio >= 0) and (valid_ratio <= 1)), error_msg
 
-    # load the dataset
-    orig_dataset = datasets.ImageFolder(root=data_path)
-
     # split the dataset
-    n = len(orig_dataset)
-    indices = list(range(n))
+    n = len(dataset)
     n_valid = int(valid_ratio*n)
+    n_train = n - n_valid
 
-    train_idx, valid_idx = indices[n_valid:], indices[:n_valid]
-    train_sampler = SubsetRandomSampler(train_idx)
-    valid_sampler = SubsetRandomSampler(valid_idx)
+    # indices = list(range(n))
+    # train_idx, valid_idx = indices[n_valid:], indices[:n_valid]
+    # train_sampler = SubsetRandomSampler(train_idx)
+    # valid_sampler = SubsetRandomSampler(valid_idx)
 
-    train_loader = DataLoader(orig_dataset, batch_size=batch_size, sampler=train_sampler,
-                    num_workers=num_workers)
+    # init random seed
+    torch.manual_seed(random_seed)
 
-    valid_loader = DataLoader(orig_dataset, batch_size=batch_size, sampler=valid_sampler,
-                    num_workers=num_workers)
+    train_dataset, valid_dataset = random_split(dataset, (n_train, n_valid))
 
+    # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler,
+    #                 num_workers=num_workers)
+
+    # valid_loader = DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler,
+    #                 num_workers=num_workers)
+
+    train_loader = dataloader(train_dataset, batch_size, shuffle=shuffle, num_workers=num_workers)
+    valid_loader = dataloader(valid_dataset, batch_size, shuffle=False, num_workers=num_workers)
+
+    return train_loader, valid_loader
     
 def show_dataset(dataset, n_sample=4):
     """Visualize dataset with n_sample"""
@@ -86,7 +131,7 @@ def show_dataset(dataset, n_sample=4):
 
     # show image
     for i in range(n_sample):
-        image, mask = dataset[i][:2]
+        image, mask = dataset[i][2:]
 
         print(i, image.shape, mask.shape)
 
@@ -99,7 +144,7 @@ def show_dataset(dataset, n_sample=4):
 
     # show mask
     for i in range(n_sample):
-        image, mask = dataset[i][:2]
+        image, mask = dataset[i][2:]
 
         print(i, image.shape, mask.shape)
 

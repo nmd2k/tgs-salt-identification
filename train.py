@@ -1,11 +1,19 @@
 import argparse
 
 import torch
-from torch._C import parse_ir
 import torchvision
+from utils.dataset import TGSDataset, show_dataset
+
+import matplotlib.pyplot as plt
 
 def train():
-    pass
+    # define transform function
+
+    # load dataset
+    dataset = TGSDataset('./data/')
+    
+    show_dataset(dataset)   
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -15,3 +23,4 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=str, default='./data', help="total batch size for all GPUs")
     
     opt = parser.parse_args()
+    train()

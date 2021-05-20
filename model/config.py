@@ -1,9 +1,10 @@
 # Model config ======
-RUN_NAME        = 'demo'
+RUN_NAME        = 'unetv0'
 N_CLASSES       = 1
 INPUT_SIZE      = 512
 EPOCHS          = 5
 LEARNING_RATE   = 0.0001
+START_FRAME     = 16
 
 # Data config =======
 SAVE_PATH       = './model/'

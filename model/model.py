@@ -7,7 +7,7 @@ from collections import OrderedDict
 from utils.common import ConvBlock, DeconvBlock, DoubleConvBlock, ResidualBlock
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=1, n_classes=N_CLASSES, start_fm=16):
+    def __init__(self, in_channels=1, n_classes=N_CLASSES, start_fm=START_FRAME):
         super(UNet, self).__init__()
         # Input 1x128x128
 

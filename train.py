@@ -1,8 +1,13 @@
 import argparse
+import os
+from traceback import walk_tb
+
+from torch.utils import data
 from model.loss import Weighted_Cross_Entropy_Loss
-from model.config import BATCH_SIZE, DATA_PATH, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES
+from model.config import BATCH_SIZE, DATA_PATH, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES, RUN_NAME, SAVE_PATH, START_FRAME
 
 import torch
+import wandb
 import numpy as np
 from tqdm import tqdm
 from torchsummary import summary
@@ -45,6 +50,15 @@ def train(model, device, trainloader, optimizer, loss_function):
         running_loss.append(loss.item())
 
     total_loss = np.mean(running_loss)
+
+    #wandb save model & log
+    wandb.log({'Train loss': total_loss})
+
+    torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
+    trained_weight = wandb.Artifact(RUN_NAME, type='weights')
+    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+    run.log_artifact(trained_weight)
+
     return total_loss
     
 def test(model, device, testloader, loss_function):
@@ -61,7 +75,7 @@ def test(model, device, testloader, loss_function):
             running_loss.append(loss.item())
     
     test_loss = np.mean(running_loss)
-    
+    wandb.log({'Valid loss': test_loss})
     return test_loss
 
 if __name__ == '__main__':
@@ -70,6 +84,32 @@ if __name__ == '__main__':
     # train on device
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print("current device", device)
+
+    # init wandb
+    config = dict(
+        lr          = LEARNING_RATE,
+        batchsize   = BATCH_SIZE,
+        epoch       = EPOCHS,
+        adam        = True,
+        model_sf    = START_FRAME,
+        device      = device,
+        data        = DATA_PATH
+    )
+
+    run = wandb.init(project="TGS-Salt-identification", tags=['Unet'], config=config)
+    artifact = wandb.Artifact('tgs-salt', type='dataset')
+
+    try:
+        for dir in ['train', 'test']:
+            artifact.add_dir(DATA_PATH+dir)
+        for file in ['train.csv', 'depths.csv']:
+            artifact.add_file(DATA_PATH+file)
+    except:
+        artifact     = run.use_artifact('tgs-salt:latest')
+        artifact_dir = artifact.download(DATA_PATH)
+
+    run.log_artifact(artifact)
+
     # load dataset
     transform = get_transform()
     dataset = TGSDataset(DATA_PATH, transforms=transform)
@@ -87,6 +127,9 @@ if __name__ == '__main__':
 
     # loss_func   = Weighted_Cross_Entropy_Loss()
     optimizer   = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    # wandb watch
+    run.watch(models=model, criterion=criterion, log='all', log_freq=10)
 
     # training
     pb = tqdm(range(epochs))

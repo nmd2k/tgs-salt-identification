@@ -1,7 +1,8 @@
+from PIL import Image
 from model.config import *
-from numpy import deprecate_with_doc
 import torch
 import os
+import numpy as np
 import pandas as pd
 from skimage import io
 from torch.utils.data import Dataset, DataLoader, dataloader, random_split
@@ -11,7 +12,7 @@ import matplotlib.pyplot as plt
 class TGSDataset(Dataset):
     """TGS Salt Identification dataset."""
     
-    def __init__(self, root_dir=DATA_PATH, transform=None):
+    def __init__(self, root_dir=DATA_PATH, transforms=None):
         """
         Args:
             root_path (string): Directory with all the images.
@@ -28,7 +29,7 @@ class TGSDataset(Dataset):
         self.ids        = train_df.index
         self.depths     = train_df['z'].to_numpy()
         self.rle        = train_df['rle_mask'].to_numpy()
-        self.transfroms = transform
+        self.transfroms = transforms
 
     def __len__(self):
         return len(self.ids)
@@ -38,43 +39,29 @@ class TGSDataset(Dataset):
         depth = self.depths[index]
 
         # file should be unzipped
-        image = io.imread(self.root_dir+IMAGE_PATH+id+'.png', as_gray=True)
-        mask  = io.imread(self.root_dir+MASK_PATH+id+'.png', as_gray=True)
+        image = Image.open(self.root_dir+IMAGE_PATH+id+'.png')
+        mask  = Image.open(self.root_dir+MASK_PATH+id+'.png')
 
         if self.transfroms:
             image = self.transfroms(image)
             mask = self.transfroms(mask)
+        
+        # image, mask = np.float32(image), np.float32(mask)
 
-        return (depth, image, mask)
+        return image, mask
 
-def get_transform(is_train=True):
-    transform = [
+def get_transform():
+    return transforms.Compose([
         transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
-    ]
-
-    if is_train:
-        transform += [
-            transforms.RandomApply([transforms.ColorJitter(
-                brightness=0.4,
-                contrast=0.4,
-                saturation=0.4,
-                hue=0.2
-            )],p=0.6),
-            transforms.RandomApply([transforms.RandomAffine(
-                degrees=15,
-                translate=(0.1, 0.1), 
-                scale=(0.9, 1.1), 
-                shear=0.1
-            )],p=0.6),
-        ]
-
-    transform += [
+        # transforms.RandomApply([transforms.RandomAffine(
+        #     degrees=15,
+        #     translate=(0.1, 0.1), 
+        #     scale=(0.9, 1.1), 
+        #     shear=0.1
+        # )],p=0.6),
         transforms.ToTensor(), 
-        transforms.Normalize((0.5,), (0.5,))
-    ]
-
-    return transforms.Compose(transforms)
-
+        # transforms.Normalize((0.5,), (0.5,))
+    ])
 
 def get_dataloader(dataset, 
                     batch_size=BATCH_SIZE, random_seed=RANDOM_SEED, 
@@ -89,11 +76,6 @@ def get_dataloader(dataset,
       the validation set. Should be a float in the range [0, 1].
     - shuffle: whether to shuffle the train/validation indices.
     - num_workers: number of subprocesses to use when loading the dataset.
-    
-    Returns:
-    -------
-    - train_loader: training set iterator.
-    - valid_loader: validation set iterator.
     """
 
     error_msg = "[!] valid_ratio should be in the range [0, 1]."
@@ -104,24 +86,13 @@ def get_dataloader(dataset,
     n_valid = int(valid_ratio*n)
     n_train = n - n_valid
 
-    # indices = list(range(n))
-    # train_idx, valid_idx = indices[n_valid:], indices[:n_valid]
-    # train_sampler = SubsetRandomSampler(train_idx)
-    # valid_sampler = SubsetRandomSampler(valid_idx)
-
     # init random seed
     torch.manual_seed(random_seed)
 
     train_dataset, valid_dataset = random_split(dataset, (n_train, n_valid))
 
-    # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler,
-    #                 num_workers=num_workers)
-
-    # valid_loader = DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler,
-    #                 num_workers=num_workers)
-
-    train_loader = dataloader(train_dataset, batch_size, shuffle=shuffle, num_workers=num_workers)
-    valid_loader = dataloader(valid_dataset, batch_size, shuffle=False, num_workers=num_workers)
+    train_loader = DataLoader(train_dataset, batch_size, shuffle=shuffle, num_workers=num_workers)
+    valid_loader = DataLoader(valid_dataset, batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, valid_loader
     
@@ -131,25 +102,25 @@ def show_dataset(dataset, n_sample=4):
 
     # show image
     for i in range(n_sample):
-        image, mask = dataset[i][2:]
-
-        print(i, image.shape, mask.shape)
+        image = dataset[i][0]
+        image = transforms.ToPILImage()(image).convert("RGB")
+        print(i, image.size)
 
         plt.tight_layout()
         ax = plt.subplot(2, n_sample, i + 1)
         ax.set_title('Sample #{}'.format(i))
         ax.axis('off')
 
-        plt.imshow(image, cmap='gray')
+        plt.imshow(image)
 
-    # show mask
+    # # show mask
     for i in range(n_sample):
-        image, mask = dataset[i][2:]
+        mask = dataset[i][1]
+        mask  = transforms.ToPILImage()(mask).convert("RGB")
+        print(i, mask.size)
 
-        print(i, image.shape, mask.shape)
-
-        ax = fig.add_subplot(2, n_sample, i + 1 + n_sample)
         plt.tight_layout()
+        ax = fig.add_subplot(2, n_sample, i + 1 + n_sample)
         ax.set_title('Mask #{}'.format(i))
         ax.axis('off')
 
@@ -158,3 +129,5 @@ def show_dataset(dataset, n_sample=4):
         if i == n_sample-1:
             plt.show()
             break
+
+        

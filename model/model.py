@@ -1,131 +1,138 @@
+from model.config import N_CLASSES
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-from utils.common import ConvBlock, DeconvBlock, ResidualBlock
+from utils.common import ConvBlock, DeconvBlock, DoubleConvBlock, ResidualBlock
+
+def double_conv(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, 3, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, 3, padding=1),
+        nn.ReLU(inplace=True)
+    )   
+
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, n_classes):
-        super(UNet, self).__init__()
+    def __init__(self, n_class=N_CLASSES):
+        super().__init__()
+                
+        self.dconv_down1 = double_conv(3, 64)
+        self.dconv_down2 = double_conv(64, 128)
+        self.dconv_down3 = double_conv(128, 256)
+        self.dconv_down4 = double_conv(256, 512)        
+
+        self.maxpool = nn.MaxPool2d(2)
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)        
         
-        self.in_channels = in_channels
-        self.n_classes = n_classes
+        self.dconv_up3 = double_conv(256 + 512, 256)
+        self.dconv_up2 = double_conv(128 + 256, 128)
+        self.dconv_up1 = double_conv(128 + 64, 64)
+        
+        self.conv_last = nn.Conv2d(64, n_class, 1)
+        
+        
+    def forward(self, x):
+        conv1 = self.dconv_down1(x)
+        x = self.maxpool(conv1)
 
-        # Encoder Block 1
-        self.encoder_1 = nn.Sequential(
-            OrderedDict([
-                ('conv1_1', ConvBlock(in_channels, 64)),
-                ('conv1_2', ConvBlock(64, 64)),
-                ('maxpool1', nn.MaxPool2d((2, 2)))
-            ])
-        )
+        conv2 = self.dconv_down2(x)
+        x = self.maxpool(conv2)
+        
+        conv3 = self.dconv_down3(x)
+        x = self.maxpool(conv3)   
+        
+        x = self.dconv_down4(x)
+        
+        x = self.upsample(x)        
+        x = torch.cat([x, conv3], dim=1)
+        
+        x = self.dconv_up3(x)
+        x = self.upsample(x)        
+        x = torch.cat([x, conv2], dim=1)       
 
-        # Encoder Block 2
-        self.encoder_2 = nn.Sequential(
-            OrderedDict([
-                ('conv2_1', ConvBlock(64, 128)),
-                ('conv2_2', ConvBlock(128, 128)),
-                ('maxpool2', nn.MaxPool2d((2, 2)))
-            ])
-        )
+        x = self.dconv_up2(x)
+        x = self.upsample(x)        
+        x = torch.cat([x, conv1], dim=1)   
+        
+        x = self.dconv_up1(x)
+        
+        out = self.conv_last(x)
+        
+        return out
 
-        # Encoder Block 3
-        self.encoder_3 = nn.Sequential(
-            OrderedDict([
-                ('conv3_1', ConvBlock(128, 256)),
-                ('conv3_2', ConvBlock(256, 256)),
-                ('maxpool3', nn.MaxPool2d((2, 2)))
-            ])
-        )
+class UNet1(nn.Module):
+    def __init__(self, in_channels=3, n_classes=N_CLASSES):
+        super(UNet, self).__init__()
 
-        # Encoder Block 4
-        self.encoder_4 = nn.Sequential(
-            OrderedDict([
-                ('conv4_1', ConvBlock(256, 512)),
-                ('conv4_2', ConvBlock(512, 512)),
-                ('maxpool4', nn.MaxPool2d((2, 2)))
-            ])
-        )
+        # Maxpool 
+        self.pool = nn.MaxPool2d((2,2))
 
-        # Encoder Block 5
-        self.middle = nn.Sequential(
-            OrderedDict([
-                ('conv5_1', ConvBlock(512, 1024)),
-                ('conv5_2', ConvBlock(1024, 1024))
-            ])
-        )
+        # Up sampling
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-        self.upconv4 = nn.Sequential(OrderedDict([('upconv4', DeconvBlock(1024))]))
+        # Encoder 
+        self.encoder_1 = DoubleConvBlock(in_channels, 64)
+        self.encoder_2 = DoubleConvBlock(64, 128)
+        self.encoder_3 = DoubleConvBlock(128, 256)
+        self.encoder_4 = DoubleConvBlock(256, 512)
 
-        # Decoder Block 4 
-        self.decoder_4 = nn.Sequential(
-            OrderedDict([
-                ('deconv4_1', ConvBlock(512, 512)),
-                ('deconv4_2', ConvBlock(512, 512))
-            ])
-        )
+        # Middle
+        self.middle = DoubleConvBlock(512, 1024)
 
-        self.upconv3 = nn.Sequential(OrderedDict([('upconv3', DeconvBlock(512))]))
-
-        # Decoder Block 3
-        self.decoder_3 = nn.Sequential(
-            OrderedDict([
-                ('deconv3_1', ConvBlock(256, 256)),
-                ('deconv3_2', ConvBlock(256, 256))
-            ])
-        )
-
-        self.upconv2 = nn.Sequential(OrderedDict([('upconv2', DeconvBlock(256))]))
-
-        # Decoder Block 2
-        self.decoder_2 = nn.Sequential(
-            OrderedDict([
-                ('deconv2_1', ConvBlock(128, 128)),
-                ('deconv2_2', ConvBlock(128, 128))
-            ])
-        )
-
-        self.upconv1 = nn.Sequential(OrderedDict([('upconv1', DeconvBlock(128))]))
-
-        # Decoder Block 1
-        self.decoder_1 = nn.Sequential(
-            OrderedDict([
-                ('deconv1_1', ConvBlock(64, 64)),
-                ('deconv1_2', ConvBlock(64, 64)),
-                ('deconv1_3', ConvBlock(64, self.n_classes, (1,1), activation=False)),
-            ])
-        )
+        # Decoder
+        self.decoder_4 = DoubleConvBlock(1024, 512)
+        self.decoder_4 = DoubleConvBlock(512, 256)
+        self.decoder_4 = DoubleConvBlock(256, 128)
+        self.decoder_4 = DoubleConvBlock(128, 64)
+        self.conv_last = nn.Conv2d(64, n_classes, (1, 1))
 
     def forward(self, x):
         # Encoder
-        # 1-64
+        # 3-64
         encoder_1 = self.encoder_1(x)
-        # 64-128
-        encoder_2 = self.encoder_2(encoder_1)
-        # 128-256
-        encoder_3 = self.encoder_2(encoder_2)
-        # 256-512
-        encoder_4 = self.encoder_2(encoder_3)
+        x = self.pool(encoder_1)
         
-        # 512-1024
-        x = self.encoder_2(encoder_4)
+        # 64-128
+        encoder_2 = self.encoder_2(x)
+        x = self.pool(encoder_2)
+
+        # 128-256
+        encoder_3 = self.encoder_3(x)
+        x = self.pool(encoder_3)
+        
+        # 256-512
+        encoder_4 = self.encoder_4(x)
+        x = self.pool(encoder_4)
+
+        # Middle: 512-1024
+        x = self.middle(x)
 
         # Decoder
         # 1024-512
-        x = self.upconv4(x, encoder_4)
+        x = self.upsample(x)
+        x = torch.cat([x, encoder_4], dim=1)
         x = self.decoder_4(x)
+
         # 512-256
-        x = self.upconv3(x, encoder_3)
+        x = self.upsample(x)
+        x = torch.cat([x, encoder_3], dim=1)
         x = self.decoder_3(x)
+
         # 256-128
-        x = self.upconv2(x, encoder_2)
+        x = self.upsample(x)
+        x = torch.cat([x, encoder_2], dim=1)
         x = self.decoder_2(x)
+
         #128-64-2
-        x = self.upconv1(x, encoder_1)
+        x = self.upsample(x)
+        x = torch.cat([x, encoder_1], dim=1)
         x = self.decoder_1(x)
 
-        return x
+        out = self.conv_last(x)
+        return out
 
 class UNet_ResNet(nn.Module):
     def __init__(self, in_channels, n_classes, dropout=0.5):
@@ -236,12 +243,12 @@ class UNet_ResNet(nn.Module):
         # 64-128
         encoder_2 = self.encoder_2(encoder_1)
         # 128-256
-        encoder_3 = self.encoder_2(encoder_2)
+        encoder_3 = self.encoder_3(encoder_2)
         # 256-512
-        encoder_4 = self.encoder_2(encoder_3)
+        encoder_4 = self.encoder_4(encoder_3)
         
         # 512-1024
-        x = self.encoder_2(encoder_4)
+        x = self.middle(encoder_4)
 
         # Decoder
         # 1024-512

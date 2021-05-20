@@ -3,37 +3,30 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.conv import Conv2d
 
-class BatchActivate(nn.Module):
-    def __init__(self, in_channels):
-        super(BatchActivate, self).__init__()
-        self.norm = nn.BatchNorm2d(in_channels)
-
-    def forward(self, x):
-        x = F.relu(self.norm(x))
-        return x
-
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=(3,3), activation=True):
+    def __init__(self, in_channels, out_channels, kernel=3, padding=1, stride=1, activation=True):
         super(ConvBlock, self).__init__()
-        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel)
-        self.batchlayer = BatchActivate(out_channels)
+        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, 
+                            kernel_size=kernel, stride=stride, padding=padding)
+        self.batchnorm  = nn.BatchNorm2d(out_channels)
         self.activation = activation
 
     def forward(self, x):
         x = self.conv(x)
         if self.activation:
-            self.batchlayer(x)
+            x = self.batchnorm(x)
+            x = F.relu(x)
         return x
 
 class DoubleConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel=(3,3)):
-        super(DoubleConvBlock).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, (3,3), padding=1)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, (3,3), padding=1)
+    def __init__(self, in_channels, out_channels, kernel=3, padding=1, stride=1):
+        super(DoubleConvBlock, self).__init__()
+        self.conv1 = ConvBlock(in_channels, out_channels, kernel, padding, stride)
+        self.conv2 = ConvBlock(out_channels, out_channels, kernel, padding, stride)
     
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
+        x = self.conv1(x)
+        x = self.conv2(x)
         return x
 
 class DeconvBlock(nn.Module):

@@ -8,7 +8,7 @@ from torchsummary import summary
 from torch import optim, nn
 import torch.nn.functional as F
 from model.model import UNet, UNet_ResNet
-from utils.dataset import TGSDataset, get_dataloader, get_transform, show_dataset
+from utils.dataset import TGSDataset, get_dataloader, get_transform, show_dataset, show_image_mask
 
 import matplotlib.pyplot as plt
 
@@ -67,13 +67,11 @@ if __name__ == '__main__':
     args = parse_args()
 
     # train on device
-    device = {'cuda' if torch.cuda.is_available() else 'cpu'}
+    device = {"cuda:0" if torch.cuda.is_available() else "cpu"}
 
     # load dataset
     transform = get_transform()
     dataset = TGSDataset(DATA_PATH, transforms=transform)
-    # show_dataset(dataset)
-
     trainloader, validloader = get_dataloader(dataset=dataset)
 
     # get model and define loss func, optimizer
@@ -84,10 +82,8 @@ if __name__ == '__main__':
     # summary model
     summary = summary(model, input_size=(3, INPUT_SIZE, INPUT_SIZE))
 
-    if n_classes > 1:
-        criterion = nn.CrossEntropyLoss()
-    else:
-        criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss()
+
     # loss_func   = Weighted_Cross_Entropy_Loss()
     optimizer   = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 

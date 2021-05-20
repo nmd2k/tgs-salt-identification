@@ -1,3 +1,4 @@
+from typing import ChainMap
 from PIL import Image
 from model.config import *
 import torch
@@ -39,8 +40,8 @@ class TGSDataset(Dataset):
         depth = self.depths[index]
 
         # file should be unzipped
-        image = Image.open(self.root_dir+IMAGE_PATH+id+'.png')
-        mask  = Image.open(self.root_dir+MASK_PATH+id+'.png')
+        image = Image.open(self.root_dir+IMAGE_PATH+id+'.png').convert('L')
+        mask  = Image.open(self.root_dir+MASK_PATH+id+'.png').convert('L')
 
         if self.transfroms:
             image = self.transfroms(image)
@@ -102,8 +103,9 @@ def show_dataset(dataset, n_sample=4):
 
     # show image
     for i in range(n_sample):
-        image = dataset[i][0]
-        image = transforms.ToPILImage()(image).convert("RGB")
+        image, mask = dataset[i]
+        image = transforms.ToPILImage()(image)
+        mask = transforms.ToPILImage()(mask)
         print(i, image.size)
 
         plt.tight_layout()
@@ -111,23 +113,20 @@ def show_dataset(dataset, n_sample=4):
         ax.set_title('Sample #{}'.format(i))
         ax.axis('off')
 
-        plt.imshow(image)
-
-    # # show mask
-    for i in range(n_sample):
-        mask = dataset[i][1]
-        mask  = transforms.ToPILImage()(mask).convert("RGB")
-        print(i, mask.size)
-
-        plt.tight_layout()
-        ax = fig.add_subplot(2, n_sample, i + 1 + n_sample)
-        ax.set_title('Mask #{}'.format(i))
-        ax.axis('off')
-
-        plt.imshow(mask, cmap='gray')
+        plt.imshow(image, cmap="Greys")
+        plt.imshow(mask, alpha=0.3, cmap="OrRd")
 
         if i == n_sample-1:
             plt.show()
             break
-
         
+def show_image_mask(image, mask):
+    fig, ax = plt.subplots()
+
+    image = transforms.ToPILImage()(image)
+    mask = transforms.ToPILImage()(mask)
+
+    ax.imshow(image, cmap="Greys")
+    ax.imshow(mask, alpha=0.3, cmap="OrRd")
+
+    plt.show()

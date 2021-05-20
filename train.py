@@ -26,16 +26,17 @@ def parse_args():
 def train(model, device, trainloader, optimizer, loss_function):
     model.train()
     running_loss = 0
-    for i, (input, target) in enumerate(trainloader):
+    for i, (input, mask) in enumerate(trainloader):
         # load data into cuda
-        input, target = input.to('cpu'), target.to('cpu')
+        input, mask = input.to(device), mask.to(device)
 
         # zero the gradient
         optimizer.zero_grad()
 
         # forward + backpropagation + step
         predict = model(input)
-        loss = loss_function(predict, target)
+        loss = loss_function(predict, mask)
+        
         loss.backward()
         optimizer.step()
 
@@ -45,23 +46,24 @@ def train(model, device, trainloader, optimizer, loss_function):
     total_loss = running_loss/len(trainloader.dataset)
     return total_loss
     
-def test(model, device, testloader):
+def test(model, device, testloader, loss_function):
     model.eval()
     test_loss = 0
     correct   = 0
     with torch.no_grad():
-        for idx, (input, target) in enumerate(testloader):
-            input, target = input.to(device), target.to(device)
+        for idx, (input, mask) in enumerate(testloader):
+            input, mask = input.to(device), mask.to(device)
 
-            output = model(input)
-            test_loss += F.nll_loss(output, target, size_average=False).item()
-            predict = output.data.max(1, keepdim=True)[1]
-            correct += predict.eq(target.view_as(predict)).sum().item()
+            predict = model(input)
+            loss = loss_function(predict, mask)
+            # test_loss += F.nll_loss(predict, mask, size_average=False).item()
+            # output = predict.data.max(1, keepdim=True)[1]
+            # correct += output.eq(mask.view_as(output)).sum().item()
     
     test_loss /= len(testloader)
-    test_accuracy = 100. * correct / len(testloader.dataset)
+    # test_accuracy = 100. * correct / len(testloader.dataset)
     
-    return test_loss, test_accuracy
+    return test_loss
 
 if __name__ == '__main__':
     args = parse_args()
@@ -95,8 +97,8 @@ if __name__ == '__main__':
         train_loss = train(model, device, trainloader, optimizer, criterion)
         train_losses.append(train_loss)
 
-        test_loss, test_acc = train(model, device, validloader)
+        test_loss = train(model, device, validloader, criterion)
         test_losses.append(test_loss)
-        test_accuracy.append(test_acc)
+        # test_accuracy.append(test_acc)
 
-        pb.set_description(f'Train loss: {train_loss} | Valid loss: {test_loss} | Valid accuracy: {test_acc}')
+        pb.set_description(f'Train loss: {train_loss} | Valid loss: {test_loss}')

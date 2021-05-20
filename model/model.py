@@ -1,4 +1,4 @@
-from model.config import N_CLASSES
+from model.config import N_CLASSES, START_FRAME
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

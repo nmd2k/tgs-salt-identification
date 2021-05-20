@@ -5,3 +5,6 @@ torchvision>=0.9.1+cu102
 # dataset =====
 # scikit-image>=0.18.1
 pandas
+
+# log experiment
+wandb

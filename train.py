@@ -54,11 +54,6 @@ def train(model, device, trainloader, optimizer, loss_function):
     #wandb save model & log
     wandb.log({'Train loss': total_loss})
 
-    torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
-    trained_weight = wandb.Artifact(RUN_NAME, type='weights')
-    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
-    run.log_artifact(trained_weight)
-
     return total_loss
     
 def test(model, device, testloader, loss_function):
@@ -132,7 +127,7 @@ if __name__ == '__main__':
     run.watch(models=model, criterion=criterion, log='all', log_freq=10)
 
     # training
-    pb = tqdm(range(epochs))
+    pb = tqdm(range(epochs), position=0)
     train_losses, test_losses, test_accuracy = [], [], []
 
     for epoch in pb:
@@ -144,3 +139,13 @@ if __name__ == '__main__':
         # test_accuracy.append(test_acc)
 
         pb.set_description(f'Train loss: {train_loss} | Valid loss: {test_loss}')
+
+    # saving model
+    print("Train finished. Start saving model")
+
+    torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
+    trained_weight = wandb.Artifact(RUN_NAME, type='weights')
+    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+    run.log_artifact(trained_weight)
+
+    # evaluate

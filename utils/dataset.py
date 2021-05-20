@@ -5,7 +5,6 @@ import torch
 import os
 import numpy as np
 import pandas as pd
-from skimage import io
 from torch.utils.data import Dataset, DataLoader, dataloader, random_split
 from torchvision import transforms
 import matplotlib.pyplot as plt

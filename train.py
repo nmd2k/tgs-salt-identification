@@ -3,6 +3,7 @@ from model.loss import Weighted_Cross_Entropy_Loss
 from model.config import BATCH_SIZE, DATA_PATH, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES
 
 import torch
+import numpy as np
 from tqdm import tqdm
 from torchsummary import summary
 from torch import optim, nn
@@ -25,7 +26,7 @@ def parse_args():
 
 def train(model, device, trainloader, optimizer, loss_function):
     model.train()
-    running_loss = 0
+    running_loss = []
     for i, (input, mask) in enumerate(trainloader):
         # load data into cuda
         input, mask = input.to(device), mask.to(device)
@@ -41,27 +42,25 @@ def train(model, device, trainloader, optimizer, loss_function):
         optimizer.step()
 
         # statistics
-        running_loss += loss.item()
+        running_loss.append(loss.item())
 
-    total_loss = running_loss/len(trainloader.dataset)
+    total_loss = np.mean(running_loss)
     return total_loss
     
 def test(model, device, testloader, loss_function):
     model.eval()
-    test_loss = 0
-    correct   = 0
+    running_loss = []
+    map   = 0
     with torch.no_grad():
         for idx, (input, mask) in enumerate(testloader):
             input, mask = input.to(device), mask.to(device)
 
             predict = model(input)
             loss = loss_function(predict, mask)
-            # test_loss += F.nll_loss(predict, mask, size_average=False).item()
-            # output = predict.data.max(1, keepdim=True)[1]
-            # correct += output.eq(mask.view_as(output)).sum().item()
+
+            running_loss.append(loss.item())
     
-    test_loss /= len(testloader)
-    # test_accuracy = 100. * correct / len(testloader.dataset)
+    test_loss = np.mean(running_loss)
     
     return test_loss
 
@@ -69,8 +68,8 @@ if __name__ == '__main__':
     args = parse_args()
 
     # train on device
-    device = {"cuda:0" if torch.cuda.is_available() else "cpu"}
-
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print("current device", device)
     # load dataset
     transform = get_transform()
     dataset = TGSDataset(DATA_PATH, transforms=transform)
@@ -78,11 +77,11 @@ if __name__ == '__main__':
 
     # get model and define loss func, optimizer
     n_classes = N_CLASSES
-    model = UNet()
+    model = UNet().to(device)
     epochs = EPOCHS
 
     # summary model
-    summary = summary(model, input_size=(3, INPUT_SIZE, INPUT_SIZE))
+    summary = summary(model, input_size=(1, INPUT_SIZE, INPUT_SIZE))
 
     criterion = nn.BCEWithLogitsLoss()
 
@@ -97,7 +96,7 @@ if __name__ == '__main__':
         train_loss = train(model, device, trainloader, optimizer, criterion)
         train_losses.append(train_loss)
 
-        test_loss = train(model, device, validloader, criterion)
+        test_loss = test(model, device, validloader, criterion)
         test_losses.append(test_loss)
         # test_accuracy.append(test_acc)
 

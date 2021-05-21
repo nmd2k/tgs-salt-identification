@@ -16,8 +16,8 @@ def cal_iou(output, labels, SMOOTH=1e-6):
         iou = torch.sum(intersection) / torch.sum(union)
         
         thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
-        thresholded = thresholded.cpu().detach().numpy()
-        
+        # thresholded = thresholded.cpu().detach().numpy()
+
     return thresholded
 
 class ConfusionMatrix:

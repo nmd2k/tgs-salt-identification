@@ -56,12 +56,25 @@ def labels():
     l[i] = label
   return l
 
-def wandb_mask(bg_imgs, pred_masks, true_masks):
-    bg_img    = [transforms.ToPILImage()(image) for image in bg_imgs]
-    pred_mask = [transforms.ToPILImage()(image) for image in pred_masks]
-    true_mask = [transforms.ToPILImage()(image) for image in true_masks]
+def tensor2np(tensor):
+    return tensor.cpu().detach().numpy()
 
-    for i in range(len(bg_img)):
-        wandb.Image(bg_img[i], masks={
-        "prediction" : {"mask_data" : pred_mask[i], "class_labels" : labels()},
-        "ground truth" : {"mask_data" : true_mask[i], "class_labels" : labels()}})
+def wandb_mask(bg_imgs, pred_masks, true_masks):
+    # bg_imgs    = [np.array(transforms.ToPILImage()(image)) for image in bg_imgs]
+    # pred_masks = [np.array(transforms.ToPILImage()(image)) for image in pred_masks]
+    # true_masks = [np.array(transforms.ToPILImage()(image)) for image in true_masks]
+
+    return wandb.Image(bg_imgs, masks={
+        "prediction" : {"mask_data" : pred_masks, "class_labels" : labels()},
+        "ground truth" : {"mask_data" : true_masks, "class_labels" : labels()}})
+
+def rle_encode(im):
+    '''
+    im: numpy array, 1 - mask, 0 - background
+    Returns run length as string formated
+    '''
+    pixels = im.flatten(order = 'F')
+    pixels = np.concatenate([[0], pixels, [0]])
+    runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
+    runs[1::2] -= runs[::2]
+    return ' '.join(str(x) for x in runs)

@@ -1,5 +1,5 @@
 import argparse
-from utils.utils import wandb_mask
+from utils.utils import tensor2np, wandb_mask
 
 from torchvision import transforms
 from model.metric import cal_iou
@@ -60,8 +60,8 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
         if ((i + 1) % 25) == 0:
             temp_loss = np.mean(running_loss)
             temp_iou  = np.mean(running_iou)
-            wandb.log({'Train loss': temp_loss, 'Train IoU': temp_iou}, step=i+1)
-            pb.set_description(f'Train loss: {temp_loss} | Train IoU: {temp_iou}', refresh=False)
+            wandb.log({'Train loss': temp_loss, 'Train IoU': temp_iou})
+            print(f'Train loss: {temp_loss} | Train IoU: {temp_iou}')
             
     total_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
@@ -93,17 +93,16 @@ def test(model, device, testloader, loss_function):
             running_loss.append(loss.item())
             running_iou.append(cal_iou(predict, mask))
 
-            print('predict ', predict.shape, 'image ', input.shape, 'mask ', mask.shape)
-
             # log the first image of the batch
-            mask_list.append(wandb_mask(input, predict, mask))
+            input, predict, mask = tensor2np(input), tensor2np(predict), tensor2np(mask)
+            mask_list.append(wandb_mask(input[0], predict[0], mask[0]))
             
             # Report metrics every 25th batch
             if ((i + 1) % 25) == 0:
                 temp_loss = np.mean(running_loss)
                 temp_iou  = np.mean(running_iou)
-                wandb.log({'Test loss': temp_loss, 'Test IoU': temp_iou}, step=i+1)
-                pb.set_description(f'Test loss: {temp_loss} | Test IoU: {temp_iou}', refresh=False)
+                wandb.log({'Test loss': temp_loss, 'Test IoU': temp_iou, 'Prediction': mask_list})
+                print(f'Test loss: {temp_loss} | Test IoU: {temp_iou}')
 
     test_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
@@ -132,7 +131,7 @@ if __name__ == '__main__':
     artifact = wandb.Artifact('tgs-salt', type='dataset')
 
     try:
-        artifact.add_dir(DATA_PATH+dir)
+        artifact.add_dir(DATA_PATH)
         run.log_artifact(artifact)
     except:
         artifact     = run.use_artifact('tgs-salt:latest')
@@ -146,7 +145,7 @@ if __name__ == '__main__':
 
     # get model and define loss func, optimizer
     n_classes = N_CLASSES
-    model = UNet_ResNet().to(device)
+    model = UNet().to(device)
     epochs = EPOCHS
 
     # summary model
@@ -161,15 +160,14 @@ if __name__ == '__main__':
     run.watch(models=model, criterion=criterion, log='all', log_freq=10)
 
     # training
-    pb = tqdm(range(epochs))
     best_iou = -1
 
-    for epoch in pb:
+    for epoch in epochs:
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion, best_iou)
 
         test_loss, test_iou = test(model, device, validloader, criterion)
 
-        pb.set_description(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}', refresh=False)
+        print(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}')
         
         # Wandb summary
         if best_iou < test_iou:

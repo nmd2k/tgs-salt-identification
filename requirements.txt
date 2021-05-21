@@ -1,6 +1,6 @@
 # base ========
-torch>=1.8.1+cu102
-torchvision>=0.9.1+cu102
+torch>=1.8.1
+torchvision>=0.9.1
 
 # dataset =====
 # scikit-image>=0.18.1

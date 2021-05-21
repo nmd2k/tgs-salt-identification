@@ -75,7 +75,7 @@ class UNet(nn.Module):
         return out
 
 class UNet_ResNet(nn.Module):
-    def __init__(self, in_channels, n_classes, dropout=0.5):
+    def __init__(self, in_channels=1, n_classes=N_CLASSES, dropout=0.5, start_fm=START_FRAME):
         super(UNet_ResNet).__init__()
         
         self.in_channels = in_channels

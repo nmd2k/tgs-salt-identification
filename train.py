@@ -34,7 +34,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def train(model, device, trainloader, optimizer, loss_function):
+def train(model, device, trainloader, optimizer, loss_function, best_iou):
     model.train()
     running_loss = []
     running_iou = []
@@ -66,9 +66,19 @@ def train(model, device, trainloader, optimizer, loss_function):
     total_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
 
+    if mean_iou>best_iou:
+        # export to onnx + pt
+        torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
+        torch.save(model, SAVE_PATH+RUN_NAME+'.pth')
+        
+        trained_weight = wandb.Artifact(RUN_NAME, type='weights')
+        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
+        run.log_artifact(trained_weight)
+
     return total_loss, mean_iou
     
-def test(model, device, testloader, loss_function, best_iou):
+def test(model, device, testloader, loss_function):
     model.eval()
     running_loss = []
     running_iou  = []
@@ -86,10 +96,7 @@ def test(model, device, testloader, loss_function, best_iou):
             print('predict ', predict.shape, 'image ', input.shape, 'mask ', mask.shape)
 
             # log the first image of the batch
-            # bg_img = input.cpu().detach().numpy()
-            # true_mask = mask.cpu().detach().numpy()
-            # prediction_mask = predict.cpu().detach().numpy()
-            # mask_list.append(wandb_mask(bg_img, prediction_mask, true_mask))
+            mask_list.append(wandb_mask(input, predict, mask))
             
             # Report metrics every 25th batch
             if ((i + 1) % 25) == 0:
@@ -100,16 +107,6 @@ def test(model, device, testloader, loss_function, best_iou):
 
     test_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
-
-    if mean_iou>best_iou:
-        # export to onnx + pt
-        torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
-        torch.save(model, SAVE_PATH+RUN_NAME+'.pth')
-        
-        trained_weight = wandb.Artifact(RUN_NAME, type='weights')
-        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
-        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
-        run.log_artifact(trained_weight)
 
     return test_loss, mean_iou
 
@@ -171,9 +168,9 @@ if __name__ == '__main__':
     best_iou = -1
 
     for epoch in pb:
-        train_loss, train_iou = train(model, device, trainloader, optimizer, criterion)
+        train_loss, train_iou = train(model, device, trainloader, optimizer, criterion, best_iou)
 
-        test_loss, test_iou = test(model, device, validloader, criterion, best_iou)
+        test_loss, test_iou = test(model, device, validloader, criterion)
 
         pb.set_description(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}', refresh=False)
         

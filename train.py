@@ -165,7 +165,7 @@ if __name__ == '__main__':
     print("Train finished. Start saving model")
 
     # export to onnx + pt
-    torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
+    # torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
     torch.save(model, SAVE_PATH+RUN_NAME+'.pth')
     
     trained_weight = wandb.Artifact(RUN_NAME, type='weights')

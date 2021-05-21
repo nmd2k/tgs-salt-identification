@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from . import general
 
 def cal_iou(output, labels, SMOOTH=1e-6):
-    output = output.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
-    
-    intersection = (output & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
-    union = (output | labels).float().sum((1, 2))         # Will be zzero if both are 0
-    
-    iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
-    
-    thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
-    
+    with torch.no_grad():
+        output = output.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
+        
+        intersection = torch.logical_and(labels, output)
+        union = torch.logical_or(labels, output)
+        iou = torch.sum(intersection) / torch.sum(union)
+        
+        thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
+        thresholded = thresholded.cpu().detach().numpy()
+        
     return thresholded
 
 class ConfusionMatrix:

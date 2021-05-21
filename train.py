@@ -18,7 +18,8 @@ from torchsummary import summary
 from torch import optim, nn
 import torch.nn.functional as F
 from model.model import UNet, UNet_ResNet
-from utils.dataset import TGSDataset, get_dataloader, get_transform, show_dataset, show_image_mask
+from utils.dataset import TGSDataset, get_dataloader, get_transform
+from utils.utils import show_dataset, show_image_mask
 
 import matplotlib.pyplot as plt
 
@@ -77,10 +78,10 @@ def test(model, device, testloader, loss_function):
             running_loss.append(loss.item())
             running_iou = cal_iou(predict, mask)
 
-            # log image
-            bg_img = transforms.ToPILImage()(input).astype(np.uint8)
-            true_mask = transforms.ToPILImage()(mask).astype(np.uint8)
-            prediction_mask = transforms.ToPILImage()(predict).astype(np.uint8)
+            # log the first image of the batch
+            bg_img = input[0].cpu().detach().numpy()
+            true_mask = mask[0].cpu().detach().numpy()
+            prediction_mask = predict[0].cpu().detach().numpy()
             mask_list.append(wandb_mask(bg_img, prediction_mask, true_mask))
             
     test_loss = np.mean(running_loss)
@@ -143,7 +144,8 @@ if __name__ == '__main__':
 
     # training
     pb = tqdm(range(epochs), position=0)
-    train_losses, test_losses, test_accuracy = [], [], []
+    train_losses, test_losses = [], []
+    best_iou = -1
 
     for epoch in pb:
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion)
@@ -152,7 +154,12 @@ if __name__ == '__main__':
         test_loss, test_iou = test(model, device, validloader, criterion)
         test_losses.append(test_loss)
 
-        pb.set_description(f'Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {valid_iou}')
+        pb.set_description(f'Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}')
+        
+        # Wandb summary
+        if best_iou < test_iou:
+            best_iou = test_iou
+            wandb.run.summary["best_accuracy"] = best_iou
 
     # saving model
     print("Train finished. Start saving model")

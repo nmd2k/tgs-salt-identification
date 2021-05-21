@@ -9,8 +9,8 @@ START_FRAME     = 16
 # Data config =======
 SAVE_PATH       = './model/'
 DATA_PATH       = './data/'
-IMAGE_PATH      = './images/'
-MASK_PATH       = './masks/'
+IMAGE_PATH      = './train/images/'
+MASK_PATH       = './train/masks/'
 
 RANDOM_SEED     = 42
 VALID_RATIO     = 0.2

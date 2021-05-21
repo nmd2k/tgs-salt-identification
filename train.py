@@ -69,7 +69,7 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
     if mean_iou>best_iou:
         # export to onnx + pt
         torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
-        torch.save(model, SAVE_PATH+RUN_NAME+'.pth')
+        torch.save(model.state_dict(), SAVE_PATH+RUN_NAME+'.pth')
         
         trained_weight = wandb.Artifact(RUN_NAME, type='weights')
         trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
@@ -132,15 +132,12 @@ if __name__ == '__main__':
     artifact = wandb.Artifact('tgs-salt', type='dataset')
 
     try:
-        for dir in ['train', 'test']:
-            artifact.add_dir(DATA_PATH+dir)
-        for file in ['train.csv', 'depths.csv']:
-            artifact.add_file(DATA_PATH+file)
+        artifact.add_dir(DATA_PATH+dir)
+        run.log_artifact(artifact)
     except:
         artifact     = run.use_artifact('tgs-salt:latest')
         artifact_dir = artifact.download(DATA_PATH)
 
-    run.log_artifact(artifact)
 
     # load dataset
     transform = get_transform()
@@ -149,7 +146,7 @@ if __name__ == '__main__':
 
     # get model and define loss func, optimizer
     n_classes = N_CLASSES
-    model = UNet().to(device)
+    model = UNet_ResNet().to(device)
     epochs = EPOCHS
 
     # summary model

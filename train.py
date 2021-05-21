@@ -76,7 +76,7 @@ def test(model, device, testloader, loss_function):
             loss = loss_function(predict, mask)
 
             running_loss.append(loss.item())
-            running_iou = cal_iou(predict, mask)
+            running_iou.append(cal_iou(predict, mask))
 
             # log the first image of the batch
             bg_img = input.cpu().detach().numpy()
@@ -87,7 +87,7 @@ def test(model, device, testloader, loss_function):
     test_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
     wandb.log({'Predictions': mask_list, 'Valid loss': test_loss, 'Valid IoU': mean_iou})
-    return test_loss
+    return test_loss, mean_iou
 
 if __name__ == '__main__':
     args = parse_args()

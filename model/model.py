@@ -83,13 +83,11 @@ class UNet_ResNet(nn.Module):
         self.dropout = dropout
 
         self.encoder_1 = nn.Sequential(
-            OrderedDict([
-                ('conv1', nn.Conv2d(in_channels, 64, (3,3), padding_mode='same')),
-                ('res1_1', ResidualBlock(64)),
-                ('res1_2', ResidualBlock(64, batch_activation=True)),
-                ('maxpool1', nn.MaxPool2d((2,2))),
-                ('dropout1', nn.Dropout2d(self.dropout/2)),
-            ])
+            nn.Conv2d(in_channels, 64, (3,3), padding_mode='same'),
+            ResidualBlock(64),
+            ResidualBlock(64, batch_activation=True),
+            nn.MaxPool2d((2,2)),
+            nn.Dropout2d(self.dropout/2),
         )
 
         self.encoder_2 = nn.Sequential(

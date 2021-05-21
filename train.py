@@ -36,8 +36,8 @@ def parse_args():
 
 def train(model, device, trainloader, optimizer, loss_function, best_iou):
     model.train()
-    running_loss = []
-    running_iou = []
+    running_loss = 0
+    iou = []
     for i, (input, mask) in enumerate(trainloader):
         # load data into cuda
         input, mask = input.to(device), mask.to(device)
@@ -53,18 +53,13 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
         optimizer.step()
 
         # statistics
-        running_iou.append(cal_iou(predict, mask))
-        running_loss.append(loss.item())
-
-        # Report metrics every 25th batch
-        if ((i + 1) % 25) == 0:
-            temp_loss = np.mean(running_loss)
-            temp_iou  = np.mean(running_iou)
-            wandb.log({'Train loss': temp_loss, 'Train IoU': temp_iou})
-            print(f'Train loss: {temp_loss} | Train IoU: {temp_iou}')
+        iou.append(cal_iou(predict, mask))
+        running_loss += (loss.item())
             
-    total_loss = np.mean(running_loss)
-    mean_iou = np.mean(running_iou)
+    mean_iou = np.mean(iou)
+    total_loss = running_loss/len(trainloader)
+    wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou})
+    print(f'Train loss: {total_loss} | Train IoU: {mean_iou}')
 
     if mean_iou>best_iou:
         # export to onnx + pt
@@ -80,9 +75,8 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
     
 def test(model, device, testloader, loss_function):
     model.eval()
-    running_loss = []
-    running_iou  = []
-    mask_list    = []
+    running_loss = 0
+    mask_list, iou  = [], []
     with torch.no_grad():
         for i, (input, mask) in enumerate(testloader):
             input, mask = input.to(device), mask.to(device)
@@ -90,22 +84,18 @@ def test(model, device, testloader, loss_function):
             predict = model(input)
             loss = loss_function(predict, mask)
 
-            running_loss.append(loss.item())
-            running_iou.append(cal_iou(predict, mask))
+            running_loss += loss.item()
+            iou.append(cal_iou(predict, mask))
 
             # log the first image of the batch
-            input, predict, mask = tensor2np(input), tensor2np(predict), tensor2np(mask)
-            mask_list.append(wandb_mask(input[0], predict[0], mask[0]))
-            
-            # Report metrics every 25th batch
-            if ((i + 1) % 25) == 0:
-                temp_loss = np.mean(running_loss)
-                temp_iou  = np.mean(running_iou)
-                wandb.log({'Test loss': temp_loss, 'Test IoU': temp_iou, 'Prediction': mask_list})
-                print(f'Test loss: {temp_loss} | Test IoU: {temp_iou}')
+            if ((i + 1) % 100) == 0:
+                img, pred, mak = tensor2np(input[0]), tensor2np(predict[0]), tensor2np(mask[0])
+                mask_list.append(wandb_mask(img, pred, mak))
 
-    test_loss = np.mean(running_loss)
-    mean_iou = np.mean(running_iou)
+    test_loss = running_loss/len(testloader)
+    mean_iou = np.mean(iou)
+    wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou, 'Prediction': mask_list})
+    print(f'Valid loss: {test_loss} | Valid IoU: {mean_iou}')
 
     return test_loss, mean_iou
 
@@ -162,7 +152,7 @@ if __name__ == '__main__':
     # training
     best_iou = -1
 
-    for epoch in epochs:
+    for epoch in range(epochs):
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion, best_iou)
 
         test_loss, test_iou = test(model, device, validloader, criterion)
@@ -170,8 +160,8 @@ if __name__ == '__main__':
         print(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}')
         
         # Wandb summary
-        if best_iou < test_iou:
-            best_iou = test_iou
+        if best_iou < train_iou:
+            best_iou = train_iou.numpy()
             wandb.run.summary["best_accuracy"] = best_iou
 
     # evaluate

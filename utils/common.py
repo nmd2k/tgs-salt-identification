@@ -3,19 +3,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.conv import Conv2d
 
+class BatchActivate(nn.Module):
+    def __init__(self, in_channels):
+        super(BatchActivate, self).__init__()
+        self.norm = nn.BatchNorm2d(in_channels)
+
+    def forward(self, x):
+        return F.relu(self.norm(x))
+
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel=3, padding=1, stride=1, activation=True):
         super(ConvBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, 
                             kernel_size=kernel, stride=stride, padding=padding)
-        self.batchnorm  = nn.BatchNorm2d(out_channels)
+        self.batchnorm  = BatchActivate(out_channels)
         self.activation = activation
 
     def forward(self, x):
         x = self.conv(x)
         if self.activation:
             x = self.batchnorm(x)
-            x = F.relu(x)
         return x
 
 class DoubleConvBlock(nn.Module):
@@ -48,16 +55,17 @@ class DeconvBlock(nn.Module):
         return x
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, kernel_size=(3,3), batch_activation=False):
+    def __init__(self, in_channels, batch_activation=False):
         super(ResidualBlock).__init__()
         self.batch_activation = batch_activation
-        self.norm_relu = BatchActivate(in_channels)
-        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=kernel_size)
+        self.norm = BatchActivate(in_channels)
+        self.conv1 = ConvBlock(in_channels, in_channels)
+        self.conv2 = ConvBlock(in_channels, in_channels, activation=False)
 
     def forward(self, input):
-        x = self.norm_relu(input)
-        x = self.conv(x)
-        x = F.relu(self.conv(x))
+        x = self.norm1(input)
+        x = self.conv1(x)
+        x = self.conv2(x)
         x = torch.cat([x, input], dim=1)
         if self.batch_activation:
             x = self.norm(x)

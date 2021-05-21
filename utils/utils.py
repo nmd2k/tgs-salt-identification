@@ -57,6 +57,7 @@ def labels():
   return l
 
 def tensor2np(tensor):
+    tensor = tensor.squeeze()
     return tensor.cpu().detach().numpy()
 
 def wandb_mask(bg_imgs, pred_masks, true_masks):
@@ -65,8 +66,15 @@ def wandb_mask(bg_imgs, pred_masks, true_masks):
     # true_masks = [np.array(transforms.ToPILImage()(image)) for image in true_masks]
 
     return wandb.Image(bg_imgs, masks={
-        "prediction" : {"mask_data" : pred_masks, "class_labels" : labels()},
-        "ground truth" : {"mask_data" : true_masks, "class_labels" : labels()}})
+        "predictions" : {
+            "mask_data" : pred_masks,
+            "class_labels" : labels()
+            },
+        "ground_truth" : {
+            "mask_data" : true_masks, 
+            "class_labels" : labels()
+            }
+        })
 
 def rle_encode(im):
     '''

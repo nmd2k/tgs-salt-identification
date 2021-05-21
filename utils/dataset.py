@@ -1,13 +1,9 @@
-from typing import ChainMap
 from PIL import Image
 from model.config import *
 import torch
-import os
-import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader, dataloader, random_split
 from torchvision import transforms
-import matplotlib.pyplot as plt
 
 class TGSDataset(Dataset):
     """TGS Salt Identification dataset."""
@@ -95,37 +91,3 @@ def get_dataloader(dataset,
     valid_loader = DataLoader(valid_dataset, batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, valid_loader
-    
-def show_dataset(dataset, n_sample=4):
-    """Visualize dataset with n_sample"""
-    fig = plt.figure()
-
-    # show image
-    for i in range(n_sample):
-        image, mask = dataset[i]
-        image = transforms.ToPILImage()(image)
-        mask = transforms.ToPILImage()(mask)
-        print(i, image.size)
-
-        plt.tight_layout()
-        ax = plt.subplot(2, n_sample, i + 1)
-        ax.set_title('Sample #{}'.format(i))
-        ax.axis('off')
-
-        plt.imshow(image, cmap="Greys")
-        plt.imshow(mask, alpha=0.3, cmap="OrRd")
-
-        if i == n_sample-1:
-            plt.show()
-            break
-        
-def show_image_mask(image, mask):
-    fig, ax = plt.subplots()
-
-    image = transforms.ToPILImage()(image)
-    mask = transforms.ToPILImage()(mask)
-
-    ax.imshow(image, cmap="Greys")
-    ax.imshow(mask, alpha=0.3, cmap="OrRd")
-
-    plt.show()

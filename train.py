@@ -1,4 +1,8 @@
 import argparse
+from utils.utils import wandb_mask
+
+from torchvision import transforms
+from model.metric import cal_iou
 import os
 from traceback import walk_tb
 
@@ -32,6 +36,7 @@ def parse_args():
 def train(model, device, trainloader, optimizer, loss_function):
     model.train()
     running_loss = []
+    running_iou = []
     for i, (input, mask) in enumerate(trainloader):
         # load data into cuda
         input, mask = input.to(device), mask.to(device)
@@ -47,19 +52,21 @@ def train(model, device, trainloader, optimizer, loss_function):
         optimizer.step()
 
         # statistics
+        running_iou.append(cal_iou(predict, mask))
         running_loss.append(loss.item())
 
     total_loss = np.mean(running_loss)
-
+    mean_iou = np.mean(running_iou)
     #wandb save model & log
-    wandb.log({'Train loss': total_loss})
+    wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou})
 
-    return total_loss
+    return total_loss, mean_iou
     
 def test(model, device, testloader, loss_function):
     model.eval()
     running_loss = []
-    map   = 0
+    running_iou  = []
+    mask_list    = []
     with torch.no_grad():
         for idx, (input, mask) in enumerate(testloader):
             input, mask = input.to(device), mask.to(device)
@@ -68,9 +75,17 @@ def test(model, device, testloader, loss_function):
             loss = loss_function(predict, mask)
 
             running_loss.append(loss.item())
-    
+            running_iou = cal_iou(predict, mask)
+
+            # log image
+            bg_img = transforms.ToPILImage()(input).astype(np.uint8)
+            true_mask = transforms.ToPILImage()(mask).astype(np.uint8)
+            prediction_mask = transforms.ToPILImage()(predict).astype(np.uint8)
+            mask_list.append(wandb_mask(bg_img, prediction_mask, true_mask))
+            
     test_loss = np.mean(running_loss)
-    wandb.log({'Valid loss': test_loss})
+    mean_iou = np.mean(running_iou)
+    wandb.log({'Predictions': mask_list, 'Valid loss': test_loss, 'Valid IoU': mean_iou})
     return test_loss
 
 if __name__ == '__main__':
@@ -131,21 +146,24 @@ if __name__ == '__main__':
     train_losses, test_losses, test_accuracy = [], [], []
 
     for epoch in pb:
-        train_loss = train(model, device, trainloader, optimizer, criterion)
+        train_loss, train_iou = train(model, device, trainloader, optimizer, criterion)
         train_losses.append(train_loss)
 
-        test_loss = test(model, device, validloader, criterion)
+        test_loss, test_iou = test(model, device, validloader, criterion)
         test_losses.append(test_loss)
-        # test_accuracy.append(test_acc)
 
-        pb.set_description(f'Train loss: {train_loss} | Valid loss: {test_loss}')
+        pb.set_description(f'Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {valid_iou}')
 
     # saving model
     print("Train finished. Start saving model")
 
+    # export to onnx + pt
     torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
+    torch.save(model, SAVE_PATH+RUN_NAME+'.pth')
+    
     trained_weight = wandb.Artifact(RUN_NAME, type='weights')
     trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
     run.log_artifact(trained_weight)
 
     # evaluate

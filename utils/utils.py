@@ -1,8 +1,9 @@
 from model.config import CLASSES
+import wandb
 import numpy as np
+from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms
-import wandb
 
 def rle_encode(im):
     '''
@@ -55,7 +56,11 @@ def labels():
     l[i] = label
   return l
 
-def wandb_mask(bg_img, pred_mask, true_mask):
-  return wandb.Image(bg_img, masks={
-    "prediction" : {"mask_data" : pred_mask, "class_labels" : labels()},
-    "ground truth" : {"mask_data" : true_mask, "class_labels" : labels()}})
+def wandb_mask(bg_imgs, pred_masks, true_masks):
+    bg_img = [Image.fromarray(image) for image in bg_imgs]
+    pred_mask = [Image.fromarray(image) for image in pred_masks]
+    true_mask = [Image.fromarray(image) for image in true_masks]
+
+    return wandb.Image(bg_img, masks={
+        "prediction" : {"mask_data" : pred_mask, "class_labels" : labels()},
+        "ground truth" : {"mask_data" : true_mask, "class_labels" : labels()}})

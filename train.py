@@ -79,9 +79,9 @@ def test(model, device, testloader, loss_function):
             running_iou = cal_iou(predict, mask)
 
             # log the first image of the batch
-            bg_img = input[0].cpu().detach().numpy()
-            true_mask = mask[0].cpu().detach().numpy()
-            prediction_mask = predict[0].cpu().detach().numpy()
+            bg_img = input.cpu().detach().numpy()
+            true_mask = mask.cpu().detach().numpy()
+            prediction_mask = predict.cpu().detach().numpy()
             mask_list.append(wandb_mask(bg_img, prediction_mask, true_mask))
             
     test_loss = np.mean(running_loss)

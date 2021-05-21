@@ -56,10 +56,15 @@ def train(model, device, trainloader, optimizer, loss_function):
         running_iou.append(cal_iou(predict, mask))
         running_loss.append(loss.item())
 
+        # Report metrics every 25th batch
+        if ((i + 1) % 25) == 0:
+            temp_loss = np.mean(running_loss)
+            temp_iou  = np.mean(running_iou)
+            wandb.log({'Train loss': temp_loss, 'Train IoU': temp_iou}, step=i+1)
+            pb.set_description(f'Train loss: {train_loss} | Train IoU: {train_iou}', refresh=False)
+            
     total_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
-    #wandb save model & log
-    wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou})
 
     return total_loss, mean_iou
     
@@ -69,7 +74,7 @@ def test(model, device, testloader, loss_function):
     running_iou  = []
     mask_list    = []
     with torch.no_grad():
-        for idx, (input, mask) in enumerate(testloader):
+        for i, (input, mask) in enumerate(testloader):
             input, mask = input.to(device), mask.to(device)
 
             predict = model(input)
@@ -84,16 +89,23 @@ def test(model, device, testloader, loss_function):
             prediction_mask = predict.cpu().detach().numpy()
             mask_list.append(wandb_mask(bg_img, prediction_mask, true_mask))
             
+            # Report metrics every 25th batch
+            if ((i + 1) % 25) == 0:
+                temp_loss = np.mean(running_loss)
+                temp_iou  = np.mean(running_iou)
+                wandb.log({'Test loss': temp_loss, 'Test IoU': temp_iou}, step=i+1)
+                pb.set_description(f'Test loss: {train_loss} | Test IoU: {train_iou}', refresh=False)
+
     test_loss = np.mean(running_loss)
     mean_iou = np.mean(running_iou)
-    wandb.log({'Predictions': mask_list, 'Valid loss': test_loss, 'Valid IoU': mean_iou})
+
     return test_loss, mean_iou
 
 if __name__ == '__main__':
     args = parse_args()
 
     # train on device
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("current device", device)
 
     # init wandb
@@ -143,18 +155,15 @@ if __name__ == '__main__':
     run.watch(models=model, criterion=criterion, log='all', log_freq=10)
 
     # training
-    pb = tqdm(range(epochs), position=0)
-    train_losses, test_losses = [], []
+    pb = tqdm(range(epochs))
     best_iou = -1
 
     for epoch in pb:
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion)
-        train_losses.append(train_loss)
 
         test_loss, test_iou = test(model, device, validloader, criterion)
-        test_losses.append(test_loss)
 
-        pb.set_description(f'Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}')
+        pb.set_description(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}', refresh=False)
         
         # Wandb summary
         if best_iou < test_iou:

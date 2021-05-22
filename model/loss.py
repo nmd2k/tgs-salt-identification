@@ -5,23 +5,25 @@
 
 import torch
 from torch.nn import functional as F
-from torch.autograd import Function
+import torch.nn as nn
 
+class DiceLoss(nn.Module):
 
-def dice_loss(pred, target, smooth=1.):
-    """Dice loss
-    """
-    pred = pred.contiguous()
-    target = target.contiguous()
+    def __init__(self):
+        super(DiceLoss, self).__init__()
+        self.smooth = 1.0
 
-    intersection = (pred * target).sum(dim=2).sum(dim=2)
+    def forward(self, y_pred, y_true):
+        assert y_pred.size() == y_true.size()
+        y_pred = y_pred[:, 0].contiguous().view(-1)
+        y_true = y_true[:, 0].contiguous().view(-1)
+        intersection = (y_pred * y_true).sum()
+        dsc = (2. * intersection + self.smooth) / (
+            y_pred.sum() + y_true.sum() + self.smooth
+        )
+        return 1. - dsc
 
-    loss = (1 - ((2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) + target.sum(dim=2).sum(dim=2) + smooth)))
-
-    return loss.mean()
-
-
-class Weighted_Cross_Entropy_Loss(torch.nn.Module):
+class Weighted_Cross_Entropy_Loss(nn.Module):
     """Cross entropy loss that uses weight maps."""
 
     def __init__(self):

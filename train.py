@@ -13,6 +13,7 @@ import numpy as np
 from tqdm import tqdm
 from torchsummary import summary
 from torch import optim
+from torch import nn
 from model.model import UNet, UNet_ResNet
 from utils.dataset import TGSDataset, get_dataloader, get_transform
 from utils.utils import show_dataset, show_image_mask
@@ -96,7 +97,7 @@ def test(model, device, testloader, loss_function):
     return test_loss, mean_iou
 
 if __name__ == '__main__':
-    args = parse_args()
+    # args = parse_args()
 
     # train on device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -107,10 +108,8 @@ if __name__ == '__main__':
         lr          = LEARNING_RATE,
         batchsize   = BATCH_SIZE,
         epoch       = EPOCHS,
-        adam        = True,
         model_sf    = START_FRAME,
         device      = device,
-        data        = DATA_PATH
     )
 
     run = wandb.init(project="TGS-Salt-identification", tags=['Unet'], config=config)
@@ -131,13 +130,13 @@ if __name__ == '__main__':
 
     # get model and define loss func, optimizer
     n_classes = N_CLASSES
-    model = UNet().to(device)
+    model = UNet_ResNet().to(device)
     epochs = EPOCHS
 
     # summary model
     summary = summary(model, input_size=(1, INPUT_SIZE, INPUT_SIZE))
 
-    criterion = DiceLoss()
+    criterion = nn.BCELoss()
 
     # loss_func   = Weighted_Cross_Entropy_Loss()
     optimizer   = optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -152,14 +151,13 @@ if __name__ == '__main__':
         t0 = time.time()
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion, best_iou)
         t1 = time.time()
-        print(f'Epoch: {epoch} | Train loss: {train_loss:.3f} | Train IoU: {train_iou:.3f} | Time: {(t0-t1):.3f}')
+        print(f'Epoch: {epoch} | Train loss: {train_loss:.3f} | Train IoU: {train_iou:.3f} | Time: {(t1-t0):.1f}s')
         test_loss, test_iou = test(model, device, validloader, criterion)
-        print(f'Epoch: {epoch} | Valid loss: {test_loss:.3f} | Valid IoU: {test_iou:.3f} | Time: {(t0-t1):.3f}')
+        print(f'Epoch: {epoch} | Valid loss: {test_loss:.3f} | Valid IoU: {test_iou:.3f} | Time: {(t1-t0):.1f}s')
         
         # Wandb summary
         if best_iou < train_iou:
-            best_iou = train_iou.numpy()
+            best_iou = train_iou
             wandb.run.summary["best_accuracy"] = best_iou
-
 
     # evaluate

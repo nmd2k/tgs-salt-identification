@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-from utils.common import ConvBlock, DeconvBlock, DoubleConvBlock, ResidualBlock
+from utils.common import ConvBlock, DoubleConvBlock, ResidualBlock
 
 class UNet(nn.Module):
     def __init__(self, in_channels=1, n_classes=N_CLASSES, start_fm=START_FRAME):
@@ -76,11 +76,11 @@ class UNet(nn.Module):
 
 class UNet_ResNet(nn.Module):
     def __init__(self, in_channels=1, n_classes=N_CLASSES, dropout=0.5, start_fm=START_FRAME):
-        super(UNet_ResNet).__init__()
+        super(UNet_ResNet, self).__init__()
 
         # Encoder 
         self.encoder_1 = nn.Sequential(
-            nn.Conv2d(in_channels, start_fm, 3, padding_mode='same'),
+            nn.Conv2d(in_channels, start_fm/2, 3, padding=(1,1)),
             ResidualBlock(start_fm),
             ResidualBlock(start_fm, batch_activation=True),
             nn.MaxPool2d((2,2)),
@@ -88,7 +88,7 @@ class UNet_ResNet(nn.Module):
         )
 
         self.encoder_2 = nn.Sequential(
-            nn.Conv2d(start_fm, start_fm*2, 3, padding_mode='same'),
+            nn.Conv2d(start_fm, start_fm*2, 3, padding=(1,1)),
             ResidualBlock(start_fm*2),
             ResidualBlock(start_fm*2, batch_activation=True),
             nn.MaxPool2d((2,2)),
@@ -96,7 +96,7 @@ class UNet_ResNet(nn.Module):
         )
 
         self.encoder_3 = nn.Sequential(
-            nn.Conv2d(start_fm*2, start_fm*4, 3, padding_mode='same'),
+            nn.Conv2d(start_fm*2, start_fm*4, 3, padding=(1,1)),
             ResidualBlock(start_fm*4),
             ResidualBlock(start_fm*4, batch_activation=True),
             nn.MaxPool2d((2,2)),
@@ -104,7 +104,7 @@ class UNet_ResNet(nn.Module):
         )
         
         self.encoder_4 = nn.Sequential(
-            nn.Conv2d(start_fm*4, start_fm*8, 3, padding_mode='same'),
+            nn.Conv2d(start_fm*4, start_fm*8, 3, padding=(1,1)),
             ResidualBlock(start_fm*8),
             ResidualBlock(start_fm*8, batch_activation=True),
             nn.MaxPool2d((2,2)),
@@ -112,7 +112,7 @@ class UNet_ResNet(nn.Module):
         )
 
         self.middle = nn.Sequential(
-            nn.Conv2d(start_fm*8, start_fm*16, 3, padding_mode='same'),
+            nn.Conv2d(start_fm*8, start_fm*16, 3, padding=(1,1)),
             ResidualBlock(start_fm*16),
             ResidualBlock(start_fm*16, batch_activation=True),
         )

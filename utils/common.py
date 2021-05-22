@@ -38,7 +38,7 @@ class DoubleConvBlock(nn.Module):
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, batch_activation=False):
-        super(ResidualBlock).__init__()
+        super(ResidualBlock, self).__init__()
         self.batch_activation = batch_activation
         self.norm = BatchActivate(in_channels)
         self.conv1 = ConvBlock(in_channels, in_channels)

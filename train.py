@@ -1,22 +1,18 @@
 import argparse
 from utils.utils import tensor2np, wandb_mask
 
-from torchvision import transforms
 from model.metric import cal_iou
 import os
-from traceback import walk_tb
-
-from torch.utils import data
-from model.loss import Weighted_Cross_Entropy_Loss
+from model.loss import DiceLoss
 from model.config import BATCH_SIZE, DATA_PATH, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES, RUN_NAME, SAVE_PATH, START_FRAME
 
 import torch
 import wandb
+import time
 import numpy as np
 from tqdm import tqdm
 from torchsummary import summary
-from torch import optim, nn
-import torch.nn.functional as F
+from torch import optim
 from model.model import UNet, UNet_ResNet
 from utils.dataset import TGSDataset, get_dataloader, get_transform
 from utils.utils import show_dataset, show_image_mask
@@ -59,7 +55,6 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
     mean_iou = np.mean(iou)
     total_loss = running_loss/len(trainloader)
     wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou})
-    print(f'Train loss: {total_loss} | Train IoU: {mean_iou}')
 
     if mean_iou>best_iou:
         # export to onnx + pt
@@ -70,6 +65,8 @@ def train(model, device, trainloader, optimizer, loss_function, best_iou):
         trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
         trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
         run.log_artifact(trained_weight)
+
+        print("Model saved to Wandb")
 
     return total_loss, mean_iou
     
@@ -95,7 +92,6 @@ def test(model, device, testloader, loss_function):
     test_loss = running_loss/len(testloader)
     mean_iou = np.mean(iou)
     wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou, 'Prediction': mask_list})
-    print(f'Valid loss: {test_loss} | Valid IoU: {mean_iou}')
 
     return test_loss, mean_iou
 
@@ -141,7 +137,7 @@ if __name__ == '__main__':
     # summary model
     summary = summary(model, input_size=(1, INPUT_SIZE, INPUT_SIZE))
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = DiceLoss()
 
     # loss_func   = Weighted_Cross_Entropy_Loss()
     optimizer   = optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -153,15 +149,17 @@ if __name__ == '__main__':
     best_iou = -1
 
     for epoch in range(epochs):
+        t0 = time.time()
         train_loss, train_iou = train(model, device, trainloader, optimizer, criterion, best_iou)
-
+        t1 = time.time()
+        print(f'Epoch: {epoch} | Train loss: {train_loss:.3f} | Train IoU: {train_iou:.3f} | Time: {(t0-t1):.3f}')
         test_loss, test_iou = test(model, device, validloader, criterion)
-
-        print(f'Epoch: {epoch} | Train loss: {train_loss} | Train IoU: {train_iou} | Valid loss: {test_loss} | Valid IoU: {test_iou}')
+        print(f'Epoch: {epoch} | Valid loss: {test_loss:.3f} | Valid IoU: {test_iou:.3f} | Time: {(t0-t1):.3f}')
         
         # Wandb summary
         if best_iou < train_iou:
             best_iou = train_iou.numpy()
             wandb.run.summary["best_accuracy"] = best_iou
+
 
     # evaluate

@@ -27,7 +27,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train image segmentation')
     parser.add_argument('--run', type=str, default='demo', help="run name")
     parser.add_argument('--model', type=str, default='Unet', help="initial weights path")
-    parser.add_argument('--dropout', type=int, default=DROP_RATE, help="declear dropout rate")
+    parser.add_argument('--dropout', type=float, default=DROP_RATE, help="declear dropout rate")
     parser.add_argument('--epoch', type=int, default=EPOCHS, help="number of epoch")
     parser.add_argument('--startfm', type=int, default=START_FRAME, help="architecture start frame")
     parser.add_argument('--batchsize', type=int, default=BATCH_SIZE, help="total batch size for all GPUs (default:")
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         lr          = args.lr,
         batchsize   = args.batchsize,
         epoch       = args.epoch,
-        model_sf    = args.startfm,
+        startfm     = args.startfm,
         size        = args.size
     )
     
@@ -146,9 +146,9 @@ if __name__ == '__main__':
     epochs = args.epoch
 
     if args.model == 'Unet':
-        model = UNet(start_fm=args.model_sf).to(device)
+        model = UNet(start_fm=args.startfm).to(device)
     else:
-        model = UNet_ResNet(dropout=args.dropout, start_fm=args.model_sf).to(device)
+        model = UNet_ResNet(dropout=args.dropout, start_fm=args.startfm).to(device)
     
     # summary model
     summary = summary(model, input_size=(1, args.size, args.size))

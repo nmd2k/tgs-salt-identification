@@ -8,7 +8,7 @@ from torchvision import transforms
 class TGSDataset(Dataset):
     """TGS Salt Identification dataset."""
     
-    def __init__(self, root_dir=DATA_PATH, transforms=None):
+    def __init__(self, root_dir=DATA_PATH, transform=None):
         """
         Args:
             root_path (string): Directory with all the images.
@@ -25,7 +25,11 @@ class TGSDataset(Dataset):
         self.ids        = train_df.index
         self.depths     = train_df['z'].to_numpy()
         self.rle        = train_df['rle_mask'].to_numpy()
-        self.transfroms = transforms
+        
+        if transform is None:
+            self.transfrom = transforms.Compose([transforms.Resize((INPUT_SIZE, INPUT_SIZE)), 
+                                                  transforms.Grayscale(), 
+                                                  transforms.ToTensor(),])
 
     def __len__(self):
         return len(self.ids)
@@ -35,29 +39,13 @@ class TGSDataset(Dataset):
         depth = self.depths[index]
 
         # file should be unzipped
-        image = Image.open(self.root_dir+IMAGE_PATH+id+'.png').convert('L')
-        mask  = Image.open(self.root_dir+MASK_PATH+id+'.png').convert('L')
-
-        if self.transfroms:
-            image = self.transfroms(image)
-            mask = self.transfroms(mask)
-        
-        # image, mask = np.float32(image), np.float32(mask)
+        image = Image.open(self.root_dir+IMAGE_PATH+id+'.png')
+        mask  = Image.open(self.root_dir+MASK_PATH+id+'.png')
+    
+        image = self.transfrom(image)
+        mask  = self.transfrom(mask)
 
         return image, mask
-
-def get_transform():
-    return transforms.Compose([
-        transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
-        # transforms.RandomApply([transforms.RandomAffine(
-        #     degrees=15,
-        #     translate=(0.1, 0.1), 
-        #     scale=(0.9, 1.1), 
-        #     shear=0.1
-        # )],p=0.6),
-        transforms.ToTensor(), 
-        # transforms.Normalize((0.5,), (0.5,))
-    ])
 
 def get_dataloader(dataset, 
                     batch_size=BATCH_SIZE, random_seed=RANDOM_SEED, 

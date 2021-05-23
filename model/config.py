@@ -1,8 +1,8 @@
 # Model config ======
-RUN_NAME        = 'unetv0'
+RUN_NAME        = 'unetv1'
 N_CLASSES       = 1
 INPUT_SIZE      = 128
-EPOCHS          = 5
+EPOCHS          = 10
 LEARNING_RATE   = 0.0001
 START_FRAME     = 16
 DROP_RATE       = 0.5
@@ -17,4 +17,4 @@ RANDOM_SEED     = 42
 VALID_RATIO     = 0.2
 BATCH_SIZE      = 16
 NUM_WORKERS     = 0
-CLASSES         = ['salt']
+CLASSES         = {1:'salt'}

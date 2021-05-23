@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from torch.nn.modules.conv import Conv2d
 
 class BatchActivate(nn.Module):
-    def __init__(self, num_feature):
+    def __init__(self, num_features):
         super(BatchActivate, self).__init__()
-        self.norm = nn.BatchNorm2d(num_feature)
+        self.norm = nn.BatchNorm2d(num_features)
 
     def forward(self, x):
         return F.relu(self.norm(x))
@@ -14,8 +14,8 @@ class BatchActivate(nn.Module):
 class ConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel=3, padding=1, stride=1, activation=True):
         super(ConvBlock, self).__init__()
-        self.conv       = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, 
-                                    kernel_size=kernel, stride=stride, padding=padding)
+        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, 
+                            kernel_size=kernel, stride=stride, padding=padding)
         self.batchnorm  = BatchActivate(out_channels)
         self.activation = activation
 

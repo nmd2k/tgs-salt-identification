@@ -159,42 +159,32 @@ class UNet_ResNet(nn.Module):
     def forward(self, x):
         # Encoder
         conv1 = self.encoder_1(x)
-        print('Conv1', conv1.shape)
 
         conv2 = self.encoder_2(conv1)
-        print('Conv2', conv2.shape)
 
         conv3 = self.encoder_3(conv2)
-        print('Conv3', conv3.shape)
 
         conv4 = self.encoder_4(conv3)
-        print('Conv4', conv4.shape)
 
         # Middle
         x     = self.middle(conv4)
-        print('Middle', x.shape)
 
         # Decoder
         x     = self.deconv_4(x)
-        print('deconv4', x.shape)
         x     = torch.cat([conv4, x], dim=1)
         x     = self.decoder_4(x)
 
         x     = self.deconv_3(x)
-        print('deconv3', x.shape)
         x     = torch.cat([conv3, x], dim=1)
         x     = self.decoder_3(x)
 
         x     = self.deconv_2(x)
-        print('deconv2', x.shape)
         x     = torch.cat([conv2, x], dim=1)
         x     = self.decoder_2(x)
 
         x     = self.deconv_1(x)
-        print('deconv1', x.shape)
         x     = torch.cat([conv1, x], dim=1)
         x     = self.decoder_1(x)
         
-        out   = self.conv_last(x)
-        print('output', out.shape)
+        out   = (self.conv_last(x))
         return out

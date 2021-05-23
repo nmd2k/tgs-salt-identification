@@ -1,10 +1,12 @@
 import argparse
-from utils.utils import tensor2np, wandb_mask
 
-from model.metric import cal_iou
+from torch.nn.modules import dropout
+from utils.utils import normtensor, tensor2np, wandb_mask
+
+from model.metric import cal_iou, get_iou_score
 import os
 from model.loss import DiceLoss
-from model.config import BATCH_SIZE, DATA_PATH, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES, RUN_NAME, SAVE_PATH, START_FRAME
+from model.config import BATCH_SIZE, DATA_PATH, DROP_RATE, EPOCHS, INPUT_SIZE, LEARNING_RATE, N_CLASSES, RUN_NAME, SAVE_PATH, START_FRAME
 
 import torch
 import wandb
@@ -23,11 +25,15 @@ import matplotlib.pyplot as plt
 def parse_args():
     """parse command line arguments"""
     parser = argparse.ArgumentParser(description='Train image segmentation')
-    parser.add_argument('--weights', type=str, default='', help="initial weights path")
-    parser.add_argument('--data', type=str, default=DATA_PATH, help="dataset path")
-    parser.add_argument('--epochs', type=int, default=EPOCHS, help="number of epoch")
-    parser.add_argument('--batch-size', type=str, default=BATCH_SIZE, help="total batch size for all GPUs (default:")
+    parser.add_argument('--run', type=str, default='demo', help="run name")
+    parser.add_argument('--model', type=str, default='Unet', help="initial weights path")
+    parser.add_argument('--dropout', type=int, default=DROP_RATE, help="declear dropout rate")
+    parser.add_argument('--epoch', type=int, default=EPOCHS, help="number of epoch")
+    parser.add_argument('--startfm', type=int, default=START_FRAME, help="architecture start frame")
+    parser.add_argument('--batchsize', type=int, default=BATCH_SIZE, help="total batch size for all GPUs (default:")
     parser.add_argument('--lr', type=float, default=LEARNING_RATE, help="learning rate (default: 0.0001)")
+    parser.add_argument('--size', type=int, default=INPUT_SIZE, help="learning rate (default: 0.0001)")
+
     args = parser.parse_args()
     return args
 
@@ -41,11 +47,10 @@ def train(model, device, trainloader, optimizer, loss_function):
 
         # forward
         predict = model(input)
-        print(predict, mask)
         loss = loss_function(predict, mask)
 
         # metric
-        iou.append(cal_iou(predict, mask).mean())
+        iou.append(get_iou_score(predict, mask).mean())
         running_loss += (loss.item())
         
         # zero the gradient + backprpagation + step
@@ -55,8 +60,9 @@ def train(model, device, trainloader, optimizer, loss_function):
         optimizer.step()
 
         # log the first image of the batch
-        if ((i + 1) % 5) == 0:
-            img, pred, mak = tensor2np(input[0]), tensor2np(predict[0]), tensor2np(mask[0])
+        if ((i + 1) % 10) == 0:
+            pred = normtensor(predict[0])
+            img, pred, mak = tensor2np(input[0]), tensor2np(pred), tensor2np(mask[0])
             mask_list.append(wandb_mask(img, pred, mak))
             
     mean_iou = np.mean(iou)
@@ -77,11 +83,12 @@ def test(model, device, testloader, loss_function, best_iou):
             loss = loss_function(predict, mask)
 
             running_loss += loss.item()
-            iou.append(cal_iou(predict, mask))
+            iou.append(get_iou_score(predict, mask).mean())
 
             # log the first image of the batch
-            if ((i + 1) % 5) == 0:
-                img, pred, mak = tensor2np(input[0]), tensor2np(predict[0]), tensor2np(mask[0])
+            if ((i + 1) % 1) == 0:
+                pred = normtensor(predict[0])
+                img, pred, mak = tensor2np(input[0]), tensor2np(pred), tensor2np(mask[0])
                 mask_list.append(wandb_mask(img, pred, mak))
 
     test_loss = running_loss/len(testloader)
@@ -99,23 +106,28 @@ def test(model, device, testloader, loss_function, best_iou):
     return test_loss, mean_iou
 
 if __name__ == '__main__':
-    # args = parse_args()
-
-    # train on device
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print("current device", device)
+    args = parse_args()
 
     # init wandb
     config = dict(
-        lr          = LEARNING_RATE,
-        batchsize   = BATCH_SIZE,
-        epoch       = EPOCHS,
-        model_sf    = START_FRAME,
-        device      = device,
+        model       = args.model,
+        dropout     = args.dropout,
+        lr          = args.lr,
+        batchsize   = args.batchsize,
+        epoch       = args.epoch,
+        model_sf    = args.startfm,
+        size        = args.size
     )
+    
+    RUN_NAME = args.run
+    INPUT_SIZE = args.size
 
     run = wandb.init(project="TGS-Salt-identification", tags=['Unet'], config=config)
     artifact = wandb.Artifact('tgs-salt', type='dataset')
+
+    # train on device
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Current device", device)
 
     try:
         artifact.add_dir(DATA_PATH)
@@ -127,20 +139,24 @@ if __name__ == '__main__':
 
     # load dataset
     dataset = TGSDataset(DATA_PATH)
-    trainloader, validloader = get_dataloader(dataset=dataset)
+    trainloader, validloader = get_dataloader(dataset=dataset, batch_size=args.batchsize)
 
     # get model and define loss func, optimizer
     n_classes = N_CLASSES
-    model = UNet().to(device)
-    epochs = EPOCHS
+    epochs = args.epoch
 
+    if args.model == 'Unet':
+        model = UNet(start_fm=args.model_sf).to(device)
+    else:
+        model = UNet_ResNet(dropout=args.dropout, start_fm=args.model_sf).to(device)
+    
     # summary model
-    summary = summary(model, input_size=(1, INPUT_SIZE, INPUT_SIZE))
+    summary = summary(model, input_size=(1, args.size, args.size))
 
     criterion = nn.BCEWithLogitsLoss()
 
     # loss_func   = Weighted_Cross_Entropy_Loss()
-    optimizer   = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer   = optim.Adam(model.parameters(), lr=args.lr)
 
     # wandb watch
     run.watch(models=model, criterion=criterion, log='all', log_freq=10)

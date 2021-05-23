@@ -1,6 +1,7 @@
 from model.config import CLASSES
 import wandb
 import numpy as np
+import torch
 from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision import transforms
@@ -57,8 +58,12 @@ def labels():
   return l
 
 def tensor2np(tensor):
-    tensor = tensor.squeeze()
-    return tensor.cpu().detach().numpy()
+    tensor = tensor.squeeze().cpu()
+    return tensor.detach().numpy()
+
+def normtensor(tensor):
+    tensor = torch.where(tensor<0., torch.zeros(1).cuda(), torch.ones(1).cuda())
+    return tensor
 
 def wandb_mask(bg_imgs, pred_masks, true_masks):
     # bg_imgs    = [np.array(transforms.ToPILImage()(image)) for image in bg_imgs]
@@ -68,10 +73,10 @@ def wandb_mask(bg_imgs, pred_masks, true_masks):
     return wandb.Image(bg_imgs, masks={
         "predictions" : {
             "mask_data" : pred_masks,
-            "class_labels" : labels()
+            "class_labels" : CLASSES
             },
         "ground_truth" : {
             "mask_data" : true_masks, 
-            "class_labels" : labels()
+            "class_labels" : CLASSES
             }
         })

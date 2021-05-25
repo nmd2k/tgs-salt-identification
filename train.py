@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--startfm', type=int, default=START_FRAME, help="architecture start frame")
     parser.add_argument('--batchsize', type=int, default=BATCH_SIZE, help="total batch size for all GPUs (default:")
     parser.add_argument('--lr', type=float, default=LEARNING_RATE, help="learning rate (default: 0.0001)")
-    parser.add_argument('--size', type=int, default=INPUT_SIZE, help="learning rate (default: 0.0001)")
+    parser.add_argument('--size', type=int, default=INPUT_SIZE, help="input size (default: 128)")
 
     args = parser.parse_args()
     return args

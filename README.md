@@ -65,6 +65,8 @@ However, you might experiment some downside while using this architecture than t
 
 **Tran Trung Thanh**
 - Github: [amaggat](https://github.com/amaggat)
+- Email: [thanhtt.amg@gmail.com](thanhtt.amg@gmail.com)
+
 
 # [Reference](#refer)
 <a id="1">[1]</a> Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-Net: Convolutional

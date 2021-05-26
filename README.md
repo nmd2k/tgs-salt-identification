@@ -64,13 +64,13 @@ class TGSDataset(Dataset):
 ## Result
 Due to the lack of computational power, we were using `Colab GPU` to train our model. After train 10 epoch each model with the dataset's `batch size` is 16 and the `start frame` is 64, the result are summary in the table below:
 
-|             | Start frame | Batch size | Learning rate | Dropout rate |   | IoU<sup>train | IoU<sup>val |
-|-------------|-------------|------------|---------------|--------------|---|-----------|----------|
-| Unet        | 16          | 16         | 0.00017       | -            |   | 60.82     | 60.53    |
-| Unet Resnet | 16          | 16         | 0.00017       | 0.5          |   | 62.91     | **67.58**    |
-|             |             |            |               |              |   |           |          |
-| Unet        | 64          | 16         | 0.00017       | -            |   | 70.96     | **74.13**    |
-| Unet Resnet | 64          | 16         | 0.00017       | 0.5          |   | 64.51     | 63.13    |
+|             | Start frame | Batch size | Learning rate | Dropout rate | Params<br>(M)   | IoU<sup>train | IoU<sup>val |
+|-------------|-------------|------------|---------------|--------------|-----------------|-----------|----------|
+| Unet        | 16          | 16         | 0.00017       | -            | 2.86            | 60.82     | 60.53    |
+| Unet Resnet | 16          | 16         | 0.00017       | 0.5          | 7.08            | 62.91     | **67.58**    |
+|             |             |            |               |              |                 |           |          |
+| Unet        | 64          | 16         | 0.00017       | -            | 27.67           | 70.96     | **74.13**    |
+| Unet Resnet | 64          | 16         | 0.00017       | 0.5          | 115.26          | 64.51     | 63.13    |
 
 
 **Notes:** We still have plan to attempt to submit our result as *late submission* in this competition, that final result will be announced here.

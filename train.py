@@ -148,9 +148,6 @@ if __name__ == '__main__':
         model = UNet(start_fm=args.startfm).to(device)
     else:
         model = UNet_ResNet(dropout=args.dropout, start_fm=args.startfm).to(device)
-    
-    # summary model
-    summary = summary(model, input_size=(1, args.size, args.size))
 
     criterion = nn.BCEWithLogitsLoss()
 
@@ -172,8 +169,8 @@ if __name__ == '__main__':
         print(f'Epoch: {epoch} | Valid loss: {test_loss:.3f} | Valid IoU: {test_iou:.3f} | Time: {(t1-t0):.1f}s')
         
         # Wandb summary
-        if best_iou < train_iou:
-            best_iou = train_iou
+        if best_iou < test_iou:
+            best_iou = test_iou
             wandb.run.summary["best_accuracy"] = best_iou
 
     # evaluate

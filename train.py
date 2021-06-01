@@ -13,7 +13,6 @@ import wandb
 import time
 import numpy as np
 from tqdm import tqdm
-from torchsummary import summary
 from torch import optim
 from torch import nn
 from model.model import UNet, UNet_ResNet

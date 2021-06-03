@@ -67,13 +67,18 @@ Due to the lack of computational power, we were using `Colab GPU` to train our m
 |             | Start frame | Batch size | Learning rate | Dropout rate | Params<br>(M)   | IoU<sup>train | IoU<sup>val |
 |-------------|-------------|------------|---------------|--------------|-----------------|-----------|----------|
 | Unet        | 16          | 16         | 0.00017       | -            | 2.86            | 60.82     | 60.53    |
-| Unet Resnet | 16          | 16         | 0.00017       | 0.5          | 7.08            | 62.91     | **67.58**    |
+| Unet Resnet | 16          | 16         | 0.00017       | 0.5          | 7.08            | 62.91     | **67.58**|
 |             |             |            |               |              |                 |           |          |
-| Unet        | 64          | 16         | 0.00017       | -            | 27.67           | 70.96     | **74.13**    |
+| Unet        | 32          | 16         | 0.00017       | -            | 7.76            | 72.88     | **72.1** |
+| Unet Resnet | 32          | 16         | 0.00017       | 0.5          | 19.56           | 63.79     | 64.33    |
+|             |             |            |               |              |                 |           |          |
+| Unet        | 64          | 16         | 0.00017       | -            | 27.67           | 70.96     | **74.13**|
 | Unet Resnet | 64          | 16         | 0.00017       | 0.5          | 115.26          | 64.51     | 63.13    |
 
 
-**Notes:** We still have plan to attempt to submit our result as *late submission* in this competition, that final result will be announced here.
+**Notes:**
+   - Look at result table closely, we can notice that Unet based Resnet can have up to 12.52% better than the original Unet. However, Unet Resnet with higher than 10M params seems not as good as Unet, this might due to the huge number of parameters that Unet Resnet have lead to overfiting, which easy happens when our dataset only contains 4000 images in training set.
+   - We still have plan to attempt to submit our result as *late submission* in this competition, that final result will be announced here.
 
 Tracking experiment
 =================

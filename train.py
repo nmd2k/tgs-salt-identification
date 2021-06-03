@@ -173,4 +173,8 @@ if __name__ == '__main__':
             best_iou = test_iou
             wandb.run.summary["best_accuracy"] = best_iou
 
+    trained_weight = wandb.Artifact(RUN_NAME, type='weights')
+    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
+    wandb.log_artifact(trained_weight)
     # evaluate

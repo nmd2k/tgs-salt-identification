@@ -27,7 +27,7 @@ class TGSDataset(Dataset):
         self.rle        = train_df['rle_mask'].to_numpy()
         
         if transform is None:
-            self.transfrom = transforms.Compose([transforms.Resize((INPUT_SIZE, INPUT_SIZE)), 
+            self.transfrom = transforms.Compose([transforms.Pad([PAD_LEFT_TOP, PAD_LEFT_TOP, PAD_RIGHT_BOTTOM, PAD_RIGHT_BOTTOM], fill=0, padding_mode='constant'), 
                                                   transforms.Grayscale(), 
                                                   transforms.ToTensor(),])
 

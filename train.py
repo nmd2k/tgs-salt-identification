@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--batchsize', type=int, default=BATCH_SIZE, help="total batch size for all GPUs (default:")
     parser.add_argument('--lr', type=float, default=LEARNING_RATE, help="learning rate (default: 0.0001)")
     parser.add_argument('--size', type=int, default=INPUT_SIZE, help="input size (default: 128)")
+    parser.add_argument('--tuning', action='store_true', help="no plot image for tuning")
 
     args = parser.parse_args()
     return args
@@ -59,14 +60,17 @@ def train(model, device, trainloader, optimizer, loss_function):
         optimizer.step()
 
         # log the first image of the batch
-        if ((i + 1) % 10) == 0:
+        if ((i + 1) % 10) == 0 and not args.tuning:
             pred = normtensor(predict[0])
             img, pred, mak = tensor2np(input[0]), tensor2np(pred), tensor2np(mask[0])
             mask_list.append(wandb_mask(img, pred, mak))
             
     mean_iou = np.mean(iou)
     total_loss = running_loss/len(trainloader)
-    wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou, 'Train prediction': mask_list})
+    if not args.tuning:
+        wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou, 'Train prediction': mask_list})
+    else: 
+        wandb.log({'Train loss': total_loss, 'Train IoU': mean_iou})
 
     return total_loss, mean_iou
     
@@ -85,14 +89,17 @@ def test(model, device, testloader, loss_function, best_iou):
             iou.append(get_iou_score(predict, mask).mean())
 
             # log the first image of the batch
-            if ((i + 1) % 1) == 0:
+            if ((i + 1) % 1) == 0 and not args.tuning:
                 pred = normtensor(predict[0])
                 img, pred, mak = tensor2np(input[0]), tensor2np(pred), tensor2np(mask[0])
                 mask_list.append(wandb_mask(img, pred, mak))
 
     test_loss = running_loss/len(testloader)
     mean_iou = np.mean(iou)
-    wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou, 'Prediction': mask_list})
+    if not args.tuning:
+        wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou, 'Prediction': mask_list})
+    else:
+        wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou})
     
     if mean_iou>best_iou:
     # export to onnx + pt

@@ -13,8 +13,12 @@ DATA_PATH       = './data/'
 IMAGE_PATH      = './train/images/'
 MASK_PATH       = './train/masks/'
 
+REAL_SIZE       = 101
 RANDOM_SEED     = 42
 VALID_RATIO     = 0.2
 BATCH_SIZE      = 16
 NUM_WORKERS     = 0
 CLASSES         = {1:'salt'}
+
+PAD_LEFT_TOP     = int((INPUT_SIZE - REAL_SIZE)/2)
+PAD_RIGHT_BOTTOM = INPUT_SIZE - PAD_LEFT_TOP - REAL_SIZE

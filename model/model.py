@@ -77,45 +77,48 @@ class UNet(nn.Module):
 class UNet_ResNet(nn.Module):
     def __init__(self, in_channels=1, n_classes=N_CLASSES, dropout=0.5, start_fm=START_FRAME):
         super(UNet_ResNet, self).__init__()
+        #Dropout & pooling
+        self.drop = dropout
+        self.pool = nn.MaxPool2d((2,2))
 
         # Encoder 
         self.encoder_1 = nn.Sequential(
             nn.Conv2d(in_channels, start_fm, 3, padding=(1,1)),
             ResidualBlock(start_fm),
             ResidualBlock(start_fm, batch_activation=True),
-            nn.MaxPool2d((2,2)),
-            nn.Dropout2d(dropout//2),
+#             nn.MaxPool2d((2,2)),
+#             nn.Dropout2d(dropout//2),
         )
 
         self.encoder_2 = nn.Sequential(
             nn.Conv2d(start_fm, start_fm*2, 3, padding=(1,1)),
             ResidualBlock(start_fm*2),
             ResidualBlock(start_fm*2, batch_activation=True),
-            nn.MaxPool2d((2,2)),
-            nn.Dropout2d(dropout),
+#             nn.MaxPool2d((2,2)),
+#             nn.Dropout2d(dropout),
         )
 
         self.encoder_3 = nn.Sequential(
             nn.Conv2d(start_fm*2, start_fm*4, 3, padding=(1,1)),
             ResidualBlock(start_fm*4),
             ResidualBlock(start_fm*4, batch_activation=True),
-            nn.MaxPool2d((2,2)),
-            nn.Dropout2d(dropout),
+#             nn.MaxPool2d((2,2)),
+#             nn.Dropout2d(dropout),
         )
         
         self.encoder_4 = nn.Sequential(
             nn.Conv2d(start_fm*4, start_fm*8, 3, padding=(1,1)),
             ResidualBlock(start_fm*8),
             ResidualBlock(start_fm*8, batch_activation=True),
-            nn.MaxPool2d((2,2)),
-            nn.Dropout2d(dropout),
+#             nn.MaxPool2d((2,2)),
+#             nn.Dropout2d(dropout),
         )
 
         self.middle = nn.Sequential(
             nn.Conv2d(start_fm*8, start_fm*16, 3, padding=3//2),
             ResidualBlock(start_fm*16),
             ResidualBlock(start_fm*16, batch_activation=True),
-            nn.MaxPool2d((2,2))
+#             nn.MaxPool2d((2,2))
         )
         
         # Transpose conv
@@ -151,40 +154,50 @@ class UNet_ResNet(nn.Module):
             nn.Conv2d(start_fm*2, start_fm, 3, padding=(1,1)),
             ResidualBlock(start_fm),
             ResidualBlock(start_fm, batch_activation=True),
-            nn.ConvTranspose2d(start_fm, start_fm, 2, 2)
         )
             
         self.conv_last = nn.Conv2d(start_fm, n_classes, 1)
 
     def forward(self, x):
         # Encoder
-        conv1 = self.encoder_1(x)
+        
+        conv1 = self.encoder_1(x) #128
+        x = self.pool(conv1) # 64
+        x = nn.Dropout2d(self.drop)(x)
 
-        conv2 = self.encoder_2(conv1)
+        conv2 = self.encoder_2(x) #64
+        x = self.pool(conv2) # 32
+        x = nn.Dropout2d(self.drop)(x)
 
-        conv3 = self.encoder_3(conv2)
+        conv3 = self.encoder_3(x) #32
+        x = self.pool(conv3) #16
+        x = nn.Dropout2d(self.drop)(x)
 
-        conv4 = self.encoder_4(conv3)
+        conv4 = self.encoder_4(x) #16
+        x = self.pool(conv4) # 8
+        x = nn.Dropout2d(self.drop)(x)
 
         # Middle
-        x     = self.middle(conv4)
-
+        x     = self.middle(x) # 8
+        
         # Decoder
-        x     = self.deconv_4(x)
-        x     = torch.cat([conv4, x], dim=1)
+        x     = self.deconv_4(x) 
+        x     = torch.cat([conv4, x], dim=1) 
         x     = self.decoder_4(x)
-
-        x     = self.deconv_3(x)
+        
+        x     = self.deconv_3(x) 
         x     = torch.cat([conv3, x], dim=1)
         x     = self.decoder_3(x)
 
-        x     = self.deconv_2(x)
+
+        x     = self.deconv_2(x) #64
         x     = torch.cat([conv2, x], dim=1)
         x     = self.decoder_2(x)
 
-        x     = self.deconv_1(x)
+
+        x     = self.deconv_1(x) # 128
         x     = torch.cat([conv1, x], dim=1)
         x     = self.decoder_1(x)
-        
-        out   = (self.conv_last(x))
+
+        out   = (self.conv_last(x)) # 128
         return out

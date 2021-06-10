@@ -101,7 +101,7 @@ def test(model, device, testloader, loss_function, best_iou):
     else:
         wandb.log({'Valid loss': test_loss, 'Valid IoU': mean_iou})
     
-    if mean_iou>best_iou:
+    if mean_iou>best_iou and not args.tuning:
     # export to onnx + pt
         try:
             torch.onnx.export(model, input, SAVE_PATH+RUN_NAME+'.onnx')
@@ -180,8 +180,9 @@ if __name__ == '__main__':
             best_iou = test_iou
             wandb.run.summary["best_accuracy"] = best_iou
 
-    trained_weight = wandb.Artifact(RUN_NAME, type='weights')
-    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
-    trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
-    wandb.log_artifact(trained_weight)
+    if not args.tuning:
+        trained_weight = wandb.Artifact(RUN_NAME, type='weights')
+        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.onnx')
+        trained_weight.add_file(SAVE_PATH+RUN_NAME+'.pth')
+        wandb.log_artifact(trained_weight)
     # evaluate

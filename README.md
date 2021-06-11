@@ -1,7 +1,7 @@
 #### TGS-Salt-Identification
 <a href="https://wandb.ai/nmd2000/TGS-Salt-identification/"><img src="https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg" alt="Visualize in WB"></a>
 
-<a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> <a href="hhttps://www.kaggle.com/giangphmtrng/unet-with-resnet-block-original-size"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
+<a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> <a href="https://www.kaggle.com/giangphmtrng/unet-with-resnet-block-original-size"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
 
 Table of contents
 =================

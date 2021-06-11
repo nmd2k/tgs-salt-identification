@@ -1,7 +1,7 @@
 #### TGS-Salt-Identification
 <a href="https://wandb.ai/nmd2000/TGS-Salt-identification/"><img src="https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-gradient.svg" alt="Visualize in WB"></a>
 
-<a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> <a href="https://www.kaggle.com/nguyenmanhdung/u-net-for-salt-identification"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
+<a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> <a href="hhttps://www.kaggle.com/giangphmtrng/unet-with-resnet-block-original-size"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
 
 Table of contents
 =================
@@ -62,7 +62,18 @@ class TGSDataset(Dataset):
 ```
 
 ## Result
-Due to the lack of computational power, we were using `Colab GPU` to train our model. After train 10 epoch each model with the dataset's `batch size` is 16 and the `start frame` is 64, the result are summary in the table below:
+We attempted to submit our model result as late submission to this challange. The result we got are shown belown:
+
+| Private score | Public score |
+|---------------|--------------|
+| 0.74147       | 71469        |
+
+In the developing process, we train each model 10 epoch with different hyperparameter such as: 
+- the dataset's `batch size`
+- the number of channel in the model `start frame`
+- the `learning rate`
+- the `dropout rate` for Unet Resnet model only
+The result as following table:
 
 |             | Start frame | Batch size | Learning rate | Dropout rate | Params<br>(M)   | IoU<sup>train | IoU<sup>val |
 |-------------|-------------|------------|---------------|--------------|-----------------|-----------|----------|
@@ -75,10 +86,8 @@ Due to the lack of computational power, we were using `Colab GPU` to train our m
 | Unet        | 64          | 16         | 0.00017       | -            | 27.67           | 70.96     | **74.13**|
 | Unet Resnet | 64          | 16         | 0.00017       | 0.5          | 115.26          | 64.51     | 63.13    |
 
-
 **Notes:**
    - Look at result table closely, we can notice that Unet based Resnet can have up to 12.52% better than the original Unet. However, Unet Resnet with higher than 10M params seems not as good as Unet, this might due to the huge number of parameters that Unet Resnet have lead to overfiting, which easy happens when our dataset only contains 4000 images in training set.
-   - We still have plan to attempt to submit our result as *late submission* in this competition, that final result will be announced here.
 
 Tracking experiment
 =================
@@ -106,7 +115,7 @@ Usage
 =================
 Our work may be run in any of the following up-to-date verified environments (with all dependencies including [CUDA](https://developer.nvidia.com/cuda-zone)/[CUDNN](https://developer.nvidia.com/cudnn), [Python](https://www.python.org/) and [PyTorch](https://pytorch.org/) preinstalled):
 - **Google Colab** notebooks with free GPU: <a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> 
-- **Kaggle** notebooks with free GPU: <a href="https://www.kaggle.com/nguyenmanhdung/u-net-for-salt-identification"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
+- **Kaggle** notebooks with free GPU: <a href="https://www.kaggle.com/giangphmtrng/unet-with-resnet-block-original-size"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
 - **Docker Image** still working on it.
 
 **Runs:**

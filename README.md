@@ -116,7 +116,7 @@ Usage
 =================
 Our work may be run in any of the following up-to-date verified environments (with all dependencies including [CUDA](https://developer.nvidia.com/cuda-zone)/[CUDNN](https://developer.nvidia.com/cudnn), [Python](https://www.python.org/) and [PyTorch](https://pytorch.org/) preinstalled):
 - **Google Colab** notebooks with free GPU: <a href="https://colab.research.google.com/drive/1cT5zXGlwm1KBTTuDFzlVvsniNvjSzzSH?usp=sharing"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a> 
-- **Kaggle** notebooks with free GPU: <a href="https://www.kaggle.com/giangphmtrng/unet-with-resnet-block-original-size"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
+- **Kaggle** notebooks with free GPU: <a href="https://www.kaggle.com/trantrungthanh/u-net-for-salt-identification-padding-version"><img src="https://kaggle.com/static/images/open-in-kaggle.svg" alt="Open In Kaggle"></a>
 - **Docker Image** still working on it.
 
 **Runs:**
